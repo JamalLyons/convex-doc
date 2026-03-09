@@ -216,8 +216,6 @@ export async function serveDocsSite(opts: {
 		server.listen(port, "127.0.0.1", () => resolve());
 	});
 
-	console.log(`Serving docs at http://localhost:${port}`);
-	console.log(`Press Ctrl+C to stop`);
 	// Keep process alive
 	await new Promise<void>(() => {});
 }

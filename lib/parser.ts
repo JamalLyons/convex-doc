@@ -57,12 +57,25 @@ export function parseFunctionSpec(raw: unknown): ParsedFunctionSpec {
  * Extracts the module name from a function identifier.
  * "users:getById"   → "users"
  * "tasks/actions:create" → "tasks/actions"
+ * "tasks.js:getTask" → "tasks"
  * "myFunction"       → "(root)"
  */
 export function getModuleName(identifier: string | undefined): string {
 	if (identifier == null || typeof identifier !== "string") return "(root)";
 	const colonIdx = identifier.lastIndexOf(":");
-	return colonIdx === -1 ? "(root)" : identifier.slice(0, colonIdx);
+	let mod = colonIdx === -1 ? "(root)" : identifier.slice(0, colonIdx);
+
+	// Strip .js or .ts extension from module name
+	if (mod.endsWith(".js")) {
+		mod = mod.slice(0, -3);
+	} else if (mod.endsWith(".ts")) {
+		mod = mod.slice(0, -3);
+	}
+	// Fallback for default httpAction grouping
+	if (colonIdx === -1 && identifier.includes("httpAction")) {
+		mod = "http";
+	}
+	return mod;
 }
 
 /**

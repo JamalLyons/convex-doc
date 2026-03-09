@@ -1,9 +1,17 @@
 import { v } from "convex/values";
-import { action, httpAction, mutation, query } from "./_generated/server";
+import {
+	action,
+	httpAction,
+	internalAction,
+	internalMutation,
+	internalQuery,
+	mutation,
+	query,
+} from "./_generated/server";
 
 /**
  * Get a task by ID.
- * 
+ *
  * @param id - The ID of the task to get.
  */
 export const getTask = query({
@@ -17,7 +25,7 @@ export const getTask = query({
 
 /**
  * Create a new task.
- * 
+ *
  * @param title - The title of the task.
  * @param done - Whether the task is done.
  */
@@ -36,7 +44,7 @@ export const createTask = mutation({
 
 /**
  * Run a task.
- * 
+ *
  * @param taskId - The ID of the task to run.
  * @param delayMs - The delay in milliseconds before running the task.
  */
@@ -54,7 +62,7 @@ export const runTask = action({
 
 /**
  * Handle a task request.
- * 
+ *
  * @param request - The HTTP request.
  */
 export const handleTaskRequest = httpAction(async (_ctx, request) => {
@@ -64,4 +72,34 @@ export const handleTaskRequest = httpAction(async (_ctx, request) => {
 		status: 200,
 		headers: { "Content-Type": "application/json" },
 	});
+});
+
+/**
+ * Internal query to check something.
+ */
+export const helperInternalQuery = internalQuery({
+	args: { info: v.string() },
+	handler: async (_ctx, args) => {
+		return `Internal info for ${args.info}`;
+	},
+});
+
+/**
+ * Internal mutation.
+ */
+export const helperInternalMutation = internalMutation({
+	args: { count: v.number() },
+	handler: async (_ctx, args) => {
+		return args.count + 1;
+	},
+});
+
+/**
+ * Internal action.
+ */
+export const helperInternalAction = internalAction({
+	args: { command: v.string() },
+	handler: async (_ctx, args) => {
+		return `Executed internal action: ${args.command}`;
+	},
 });

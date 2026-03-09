@@ -33,8 +33,71 @@ const TAILWIND_INPUT_CSS = `@tailwind base;
 
 /* ConvexDoc base */
 html { font-family: Sora, ui-sans-serif, system-ui, -apple-system, Segoe UI, sans-serif; }
-code, pre, kbd, samp { font-family: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; }
+code, pre, kbd, samp { font-family: 'JetBrains Mono', 'Fira Code', 'IBM Plex Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; }
 dialog::backdrop { background: rgba(0,0,0,0.7); }
+
+/**
+ * Phoenix Macro UI theme: Zinc + Red Zone
+ * Glossy, polished (Apple-like) with glass and gradients.
+ */
+:root {
+  --phoenix-zinc-50: #fafafa;
+  --phoenix-zinc-100: #f4f4f5;
+  --phoenix-zinc-200: #e4e4e7;
+  --phoenix-zinc-300: #d4d4d8;
+  --phoenix-zinc-400: #a1a1aa;
+  --phoenix-zinc-500: #71717a;
+  --phoenix-zinc-600: #52525b;
+  --phoenix-zinc-700: #3f3f46;
+  --phoenix-zinc-800: #27272a;
+  --phoenix-zinc-900: #18181b;
+  --phoenix-zinc-950: #09090b;
+  --phoenix-red-zone: #ef4444;
+  --phoenix-red-zone-hover: #dc2626;
+  --phoenix-red-zone-glow: rgba(239, 68, 68, 0.35);
+  --phoenix-red-zone-gradient-start: #ea580c;
+  --phoenix-red-zone-gradient-end: #dc2626;
+  --phoenix-red-zone-active-start: #f97316;
+  --phoenix-red-zone-active-end: #ef4444;
+  --phoenix-glass-bg: rgba(39, 39, 42, 0.65);
+  --phoenix-glass-border: rgba(255, 255, 255, 0.08);
+  --phoenix-glass-highlight: rgba(255, 255, 255, 0.05);
+  --phoenix-glass-blur: 12px;
+  --phoenix-app-bg: var(--phoenix-zinc-950);
+  --phoenix-app-surface: var(--phoenix-zinc-900);
+  --phoenix-text: var(--phoenix-zinc-50);
+  --phoenix-text-muted: var(--phoenix-zinc-400);
+  --phoenix-text-dim: var(--phoenix-zinc-500);
+  --phoenix-success: #22c55e;
+  --phoenix-error: var(--phoenix-red-zone);
+}
+.phoenix-glass {
+  background: var(--phoenix-glass-bg);
+  backdrop-filter: blur(var(--phoenix-glass-blur));
+  -webkit-backdrop-filter: blur(var(--phoenix-glass-blur));
+  border: 1px solid var(--phoenix-glass-border);
+  box-shadow: 0 1px 0 0 var(--phoenix-glass-highlight) inset, 0 2px 8px -2px rgba(0,0,0,0.4);
+}
+.phoenix-btn-primary {
+  background: linear-gradient(180deg, var(--phoenix-red-zone-active-start) 0%, var(--phoenix-red-zone-gradient-start) 40%, var(--phoenix-red-zone-gradient-end) 100%);
+  color: white;
+  border: 1px solid rgba(255,255,255,0.15);
+  box-shadow: 0 1px 0 0 rgba(255,255,255,0.2) inset, 0 2px 8px -2px var(--phoenix-red-zone-glow);
+  font-weight: 700;
+}
+.phoenix-btn-primary:hover:not(:disabled) {
+  background: linear-gradient(180deg, #fb923c 0%, var(--phoenix-red-zone-active-start) 40%, var(--phoenix-red-zone-hover) 100%);
+  box-shadow: 0 1px 0 0 rgba(255,255,255,0.25) inset, 0 4px 12px -2px var(--phoenix-red-zone-glow);
+}
+.phoenix-btn-ghost {
+  background: var(--phoenix-glass-bg);
+  color: var(--phoenix-text-muted);
+  border: 1px solid var(--phoenix-glass-border);
+}
+.phoenix-btn-ghost:hover:not(:disabled) {
+  background: var(--phoenix-zinc-700);
+  color: var(--phoenix-text);
+}
 `;
 
 const APP_JS = `// ConvexDoc client enhancements (static site)
@@ -185,12 +248,14 @@ function prettyJson(v) {
 
 function badgeClass(type) {
   return type === "query"
-    ? "bg-sky-500/15 text-sky-200 ring-1 ring-inset ring-sky-400/30"
+    ? "bg-sky-500/10 text-sky-400 ring-1 ring-inset ring-zinc-400/30"
     : type === "mutation"
-      ? "bg-emerald-500/15 text-emerald-200 ring-1 ring-inset ring-emerald-400/30"
+      ? "bg-emerald-500/10 text-emerald-400 ring-1 ring-inset ring-emerald-500/30"
       : type === "action"
-        ? "bg-fuchsia-500/15 text-fuchsia-200 ring-1 ring-inset ring-fuchsia-400/30"
-        : "bg-slate-500/15 text-slate-200 ring-1 ring-inset ring-slate-400/30";
+        ? "bg-gradient-to-r from-orange-500/20 to-red-500/20 text-red-400 ring-1 ring-inset ring-red-500/30"
+        : type === "httpAction"
+        ? "bg-orange-500/10 text-orange-400 ring-1 ring-inset ring-orange-500/30"
+        : "bg-zinc-500/10 text-zinc-400 ring-1 ring-inset ring-zinc-500/30";
 }
 
 function buildFormFromObjectValidator(rootValidator, initialArgs) {
@@ -306,6 +371,32 @@ function attachRunner(manifestPromise) {
   }
 
   async function runFunction(fn, args, bearerToken) {
+    if (fn.functionType === "httpAction") {
+      const deployUrl = sessionStorage.getItem("convexdoc:deployUrl") || "http://localhost:3218";
+      const route = manifestPromise.then(m => m.httpRoutes?.find(r => r.handlerIdentifier === fn.identifier));
+      const r = await route;
+      const path = r ? r.path : "/";
+      const method = r ? r.method : "GET";
+      const startTime = Date.now();
+      
+      const headers = new Headers();
+      if (bearerToken) headers.set("Authorization", \`Bearer \${bearerToken}\`);
+      
+      let fetchArgs = { method, headers };
+      if (method !== "GET" && method !== "HEAD") {
+          fetchArgs.body = JSON.stringify(args);
+          headers.set("Content-Type", "application/json");
+      }
+      
+      const res = await fetch(\`\${deployUrl}\${path}\`, fetchArgs);
+      const durationMs = Date.now() - startTime;
+      const text = await res.text();
+      let json;
+      try { json = JSON.parse(text); } catch { json = { status: "success", value: text }; }
+      
+      return { httpStatus: res.status, durationMs, json: res.ok ? { status: "success", value: json } : { status: "error", errorMessage: text } };
+    }
+  
     const res = await fetch("/__convexdoc/run", {
       method: "POST",
       headers: { "content-type": "application/json" },
@@ -338,20 +429,13 @@ function attachRunner(manifestPromise) {
     const fn = (manifest.functions ?? []).find((f) => f.identifier === identifier);
     if (!fn) {
       setPanel(\`
-        <div class="rounded-xl bg-black/30 ring-1 ring-white/10 p-3">
-          <div class="text-sm text-slate-200 font-semibold">Function not found</div>
+        <div class="rounded-xl p-3" style="background-color: var(--phoenix-app-surface); box-shadow: 0 1px 0 0 rgba(255,255,255,0.05) inset, 0 1px 3px 0 rgba(0,0,0,0.5);">
+          <div class="text-sm font-semibold" style="color: var(--phoenix-text);">Function not found</div>
         </div>\`);
       return;
     }
 
-    if (fn.functionType === "httpAction") {
-      setPanel(\`
-        <div class="rounded-xl bg-black/30 ring-1 ring-white/10 p-3">
-          <div class="text-sm text-slate-200 font-semibold">HTTP action</div>
-          <div class="mt-2 text-xs text-slate-400">Use the HTTP routes panel (coming next) to test HTTP actions.</div>
-        </div>\`);
-      return;
-    }
+    // removed httpAction block as we now support it
 
     const storageKey = \`convexdoc:args:\${fn.identifier}\`;
     const tokenKey = "convexdoc:bearerToken";
@@ -370,42 +454,57 @@ function attachRunner(manifestPromise) {
 
     setPanel(\`
       <div class="space-y-3">
-        <div class="rounded-xl bg-black/30 ring-1 ring-white/10 p-3">
+        <div class="rounded-xl p-3" style="background-color: var(--phoenix-app-surface); box-shadow: 0 1px 0 0 rgba(255,255,255,0.05) inset, 0 1px 3px 0 rgba(0,0,0,0.5);">
           <div class="flex items-center gap-2">
             <span class="inline-flex items-center px-2 py-0.5 rounded-lg text-[11px] font-medium \${badgeClass(fn.functionType)}">\${fn.functionType}</span>
-            <div class="font-mono text-xs text-white truncate">\${escapeHtml(fn.identifier)}</div>
+            \${fn.visibility === "internal" ? '<span class="inline-flex items-center px-2 py-0.5 rounded-lg text-[11px] font-medium bg-zinc-500/10 text-zinc-400 ring-1 ring-inset ring-zinc-500/30">\\uD83D\\uDD12 internal</span>' : ''}
+            <div class="font-mono text-xs truncate" style="color: var(--phoenix-text);">\${escapeHtml(fn.identifier)}</div>
           </div>
-          \${summary ? \`<div class="mt-2 text-xs text-slate-300">\${escapeHtml(summary)}</div>\` : ""}
-          \${details ? \`<div class="mt-2 text-xs text-slate-400 whitespace-pre-wrap">\${escapeHtml(details)}</div>\` : ""}
+          \${summary ? \`<div class="mt-2 text-xs" style="color: var(--phoenix-text-muted);">\${escapeHtml(summary)}</div>\` : ""}
+          \${details ? \`<div class="mt-2 text-xs whitespace-pre-wrap" style="color: var(--phoenix-text-dim);">\${escapeHtml(details)}</div>\` : ""}
         </div>
 
-        <div class="rounded-xl bg-black/30 ring-1 ring-white/10 p-3">
-          <div class="text-xs font-semibold text-slate-200">Auth (optional)</div>
-          <input id="convexdoc-bearer" class="mt-2 w-full rounded-xl bg-white/5 px-3 py-2 text-xs font-mono text-white placeholder:text-slate-500 ring-1 ring-white/10 focus:outline-none focus:ring-2 focus:ring-sky-400/40" placeholder="Bearer token" value="\${escapeHtml(savedToken)}" />
-          <div class="mt-1 text-[11px] text-slate-500">Sent as <code class="font-mono">Authorization: Bearer …</code>.</div>
+        <div class="rounded-xl p-3" style="background-color: var(--phoenix-app-surface); box-shadow: 0 1px 0 0 rgba(255,255,255,0.05) inset, 0 1px 3px 0 rgba(0,0,0,0.5);">
+          <div class="text-xs font-semibold" style="color: var(--phoenix-text);">Connection Settings</div>
+          
+          <div class="mt-3">
+            <label class="block text-[11px] mb-1.5" style="color: var(--phoenix-text-muted);">Deployment URL (for HTTP actions)</label>
+            <input id="convexdoc-deploy-url" class="w-full rounded-xl bg-white/5 px-3 py-2 text-xs font-mono placeholder:text-slate-500 ring-1 ring-white/10 focus:outline-none focus:ring-2 focus:ring-sky-400/40" style="color: var(--phoenix-text);" value="\${escapeHtml(sessionStorage.getItem('convexdoc:deployUrl') || 'http://localhost:3218')}" />
+          </div>
+
+          <div class="mt-3">
+            <label class="block text-[11px] mb-1.5" style="color: var(--phoenix-text-muted);">Admin Key / Auth Token (optional)</label>
+            <input id="convexdoc-bearer" class="w-full rounded-xl bg-white/5 px-3 py-2 text-xs font-mono placeholder:text-slate-500 ring-1 ring-white/10 focus:outline-none focus:ring-2 focus:ring-sky-400/40" style="color: var(--phoenix-text);" placeholder="Token" value="\${escapeHtml(sessionStorage.getItem(tokenKey) || '')}" />
+            <div class="mt-1.5 text-[11px]" style="color: var(--phoenix-text-dim);">Sent as <code class="font-mono bg-black/30 px-1 rounded">Authorization: Bearer …</code>. Essential for internal functions. Saved to <code class="font-mono bg-black/30 px-1 rounded">sessionStorage</code>.</div>
+          </div>
         </div>
 
-        <div class="rounded-xl bg-black/30 ring-1 ring-white/10 overflow-hidden">
+        <div class="rounded-xl overflow-hidden" style="background-color: var(--phoenix-app-surface); box-shadow: 0 1px 0 0 rgba(255,255,255,0.05) inset, 0 1px 3px 0 rgba(0,0,0,0.5);">
           <div class="flex items-center gap-2 px-3 py-2 border-b border-white/10">
-            <button type="button" id="convexdoc-tab-json" class="rounded-lg bg-white/5 px-2.5 py-1 text-xs text-slate-200 ring-1 ring-white/10">JSON</button>
-            \${canForm ? '<button type="button" id="convexdoc-tab-form" class="rounded-lg bg-transparent px-2.5 py-1 text-xs text-slate-300 hover:text-white">Form</button>' : ""}
+            <button type="button" id="convexdoc-tab-json" class="rounded-lg bg-white/5 px-2.5 py-1 text-xs ring-1 ring-white/10" style="color: var(--phoenix-text);">JSON</button>
+            \${canForm ? \`<button type="button" id="convexdoc-tab-form" class="rounded-lg bg-transparent px-2.5 py-1 text-xs hover:text-white" style="color: var(--phoenix-text-muted);">Form</button>\` : ""}
             <div class="ml-auto">
-              <button type="button" id="convexdoc-run" class="rounded-lg bg-sky-400/10 px-3 py-1.5 text-xs text-sky-100 ring-1 ring-sky-400/30 hover:bg-sky-400/15">Run</button>
+              <button type="button" id="convexdoc-run" class="phoenix-btn-primary rounded-lg px-3 py-1.5 text-xs text-white shadow-md shadow-red-500/20">Run</button>
             </div>
           </div>
           <div class="p-3">
             <div id="convexdoc-json-pane">
-              <textarea id="convexdoc-args-json" class="w-full h-36 rounded-xl bg-white/5 px-3 py-2 text-xs font-mono text-white placeholder:text-slate-500 ring-1 ring-white/10 focus:outline-none focus:ring-2 focus:ring-sky-400/40">\${escapeHtml(savedArgsRaw)}</textarea>
-              <div class="mt-1 text-[11px] text-slate-500">Arguments object passed to the function.</div>
+              <textarea id="convexdoc-args-json" class="w-full h-36 rounded-xl bg-white/5 px-3 py-2 text-xs font-mono placeholder:text-slate-500 ring-1 ring-white/10 focus:outline-none focus:ring-2 focus:ring-sky-400/40" style="color: var(--phoenix-text);">\${escapeHtml(savedArgsRaw)}</textarea>
+              <div class="mt-1 text-[11px]" style="color: var(--phoenix-text-dim);">Arguments object passed to the function.</div>
             </div>
             \${canForm ? \`<div id="convexdoc-form-pane" class="hidden space-y-2">\${form.html}</div>\` : ""}
           </div>
         </div>
 
-        <div id="convexdoc-response" class="rounded-xl bg-black/30 ring-1 ring-white/10 p-3">
-          <div class="text-xs text-slate-400">Response will appear here.</div>
+        <div id="convexdoc-response" class="rounded-xl p-3" style="background-color: var(--phoenix-app-surface); box-shadow: 0 1px 0 0 rgba(255,255,255,0.05) inset, 0 1px 3px 0 rgba(0,0,0,0.5);">
+          <div class="text-xs" style="color: var(--phoenix-text-muted);">Response will appear here.</div>
         </div>
       </div>\`);
+      
+    const deployUrlEl = q("convexdoc-deploy-url");
+    deployUrlEl?.addEventListener("input", () => {
+      sessionStorage.setItem("convexdoc:deployUrl", deployUrlEl.value);
+    });
 
     const bearerEl = q("convexdoc-bearer");
     const jsonTab = q("convexdoc-tab-json");
@@ -464,27 +563,30 @@ function attachRunner(manifestPromise) {
         const { httpStatus, durationMs, json } = await runFunction(fn, args, bearerToken);
         const ok = json?.status === "success";
         const title = ok ? "Success" : "Error";
-        const titleClass = ok ? "text-emerald-200" : "text-rose-200";
+        const titleColor = ok ? "var(--phoenix-success)" : "var(--phoenix-error)";
         const logs = Array.isArray(json?.logLines) ? json.logLines : [];
         const value = ok ? json.value : (json?.errorMessage ?? json?.message ?? "Unknown error");
         respEl.innerHTML = \`
           <div class="flex items-center justify-between gap-3">
-            <div class="text-sm font-semibold \${titleClass}">\${title}</div>
-            <div class="text-[11px] text-slate-500 font-mono">HTTP \${httpStatus}\${durationMs ? \` • \${durationMs}ms\` : ""}</div>
+            <div class="text-sm font-semibold flex items-center gap-2" style="color: \${titleColor}">
+              <span class="h-2 w-2 rounded-full inline-block" style="background-color: \${titleColor}; box-shadow: 0 0 8px \${titleColor}"></span>
+              \${title}
+            </div>
+            <div class="text-[11px] font-mono" style="color: var(--phoenix-text-dim);">HTTP \${httpStatus}\${durationMs ? \` • \${durationMs}ms\` : ""}</div>
           </div>
-          <div class="mt-3 rounded-xl bg-white/5 ring-1 ring-white/10 p-3">
-            <pre class="text-[11px] leading-5 text-slate-200 whitespace-pre-wrap">\${escapeHtml(prettyJson(value))}</pre>
+          <div class="mt-3 rounded-xl bg-black/50 ring-1 ring-white/5 p-3 overflow-x-auto">
+            <pre class="text-[11px] leading-5 whitespace-pre-wrap" style="color: var(--phoenix-text);">\${escapeHtml(prettyJson(value))}</pre>
           </div>
           \${logs.length ? \`
-            <div class="mt-3 text-xs font-semibold text-slate-200">logLines</div>
-            <div class="mt-2 rounded-xl bg-white/5 ring-1 ring-white/10 p-3">
-              <pre class="text-[11px] leading-5 text-slate-300 whitespace-pre-wrap">\${escapeHtml(logs.join("\\n"))}</pre>
+            <div class="mt-3 text-xs font-semibold" style="color: var(--phoenix-text);">logLines</div>
+            <div class="mt-2 rounded-xl bg-black/50 ring-1 ring-white/5 p-3 overflow-x-auto">
+              <pre class="text-[11px] leading-5 whitespace-pre-wrap" style="color: var(--phoenix-text-muted);">\${escapeHtml(logs.join("\\n"))}</pre>
             </div>\` : ""}\`;
       } catch (e) {
         respEl.innerHTML = \`
-          <div class="text-sm text-rose-200 font-semibold">Runner failed</div>
-          <div class="mt-2 text-xs text-slate-400">Make sure you’re serving via <code class="font-mono text-slate-200">convexdoc serve</code>.</div>
-          <div class="mt-2 text-xs text-slate-500">\${escapeHtml(e?.message ?? String(e))}</div>\`;
+          <div class="text-sm font-semibold" style="color: var(--phoenix-error);">Runner failed</div>
+          <div class="mt-2 text-xs" style="color: var(--phoenix-text-muted);">Make sure you’re serving via <code class="font-mono" style="color: var(--phoenix-text);">convexdoc serve</code>.</div>
+          <div class="mt-2 text-xs" style="color: var(--phoenix-text-dim);">\${escapeHtml(e?.message ?? String(e))}</div>\`;
       }
     }
 
@@ -701,13 +803,15 @@ export function buildModuleSlugs(
 }
 
 function formatArgs(fn: ConvexFunctionSpec): string {
-	if (!fn.args) return "none";
-	return formatValidator(fn.args);
+	if (!fn.args) return "// no arguments required";
+	const fmt = formatValidator(fn.args);
+	return fmt === "{}" ? "{ }  // empty object" : fmt;
 }
 
 function formatReturns(fn: ConvexFunctionSpec): string {
-	if (!fn.returns) return "none";
-	return formatValidator(fn.returns);
+	if (!fn.returns) return "// no arguments required";
+	const fmt = formatValidator(fn.returns);
+	return fmt === "{}" ? "{ }  // empty object" : fmt;
 }
 
 /**
