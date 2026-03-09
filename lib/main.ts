@@ -1,12 +1,13 @@
 #!/usr/bin/env node
+
 import { existsSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import chalk from "chalk";
 import { Command } from "commander";
-import { execa } from "execa";
 import ora from "ora";
 import type { FunctionSpecOutput } from "./function-spec.js";
 import { generateDocs } from "./generate.js";
+import { serveDocsSite } from "./local-server.js";
 import {
 	formatValidator,
 	getFunctionName,
@@ -104,8 +105,10 @@ program
 		spinner.start("Generating docs...");
 		const outputDir = join(projectDir, "convex", "docs");
 		try {
-			await generateDocs(parsed, outputDir);
-			spinner.succeed(`Docs written to ${outputDir}`);
+			await generateDocs(parsed, outputDir, projectDir);
+			spinner.succeed(
+				`Docs written to ${outputDir}. Run \`convexdoc serve\` to view.`,
+			);
 		} catch (err: unknown) {
 			spinner.fail("Generate failed");
 			console.error(chalk.red((err as Error).message));
@@ -150,10 +153,7 @@ program
 		console.log(chalk.green(`Serving docs at ${chalk.bold(url)}`));
 		console.log(chalk.dim("Press Ctrl+C to stop.\n"));
 
-		await execa("npx", ["--yes", "serve", docsDir, "-l", port], {
-			cwd: projectDir,
-			stdio: "inherit",
-		});
+		await serveDocsSite({ docsDir, port: Number(opts.port) });
 	});
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────

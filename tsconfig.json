@@ -11,8 +11,7 @@
 		"declaration": true,
 		"declarationMap": true,
 		"sourceMap": true,
-		"jsx": "react-jsx",
-		"jsxImportSource": "jsx-async-runtime"
+		"jsx": "react-jsx"
 	},
 	"include": ["lib/**/*"],
 	"exclude": ["node_modules", "dist"]

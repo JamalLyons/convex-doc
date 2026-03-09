@@ -5,6 +5,9 @@ import { v } from "convex/values";
  * Dummy schema for ConvexDoc testing.
  */
 export default defineSchema({
+	/**
+	 * Tasks table.
+	 */
 	tasks: defineTable({
 		title: v.optional(v.string()),
 		done: v.boolean(),

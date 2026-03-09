@@ -6,7 +6,12 @@
 		"useIgnoreFile": true
 	},
 	"files": {
-		"includes": ["**", "!!**/dist", "!!**/convex/_generated"]
+		"includes": [
+			"**",
+			"!!**/dist",
+			"!!**/convex/_generated",
+			"!!**/node_modules"
+		]
 	},
 	"formatter": {
 		"enabled": true,
