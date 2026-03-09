@@ -2,7 +2,6 @@
  * JSX page components for ConvexDoc static HTML output.
  * Uses jsx-async-runtime; attributes are HTML-style (class, not className).
  */
-/// <reference types="jsx-async-runtime" />
 
 import type {
 	ConvexFunctionSpec,

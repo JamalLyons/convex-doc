@@ -203,7 +203,7 @@ function validateRawOutput(raw: unknown): { functions: RawFunctionEntry[] } {
 	if (!Array.isArray(obj.functions)) {
 		throw new Error(
 			'Expected function-spec JSON to have a "functions" array. ' +
-			"Run `npx convex function-spec` and check the output format.",
+				"Run `npx convex function-spec` and check the output format.",
 		);
 	}
 

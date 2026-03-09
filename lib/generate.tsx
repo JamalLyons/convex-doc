@@ -6,13 +6,13 @@
 import {
 	existsSync,
 	mkdirSync,
-	rmSync,
 	rmdirSync,
+	rmSync,
 	unlinkSync,
 	writeFileSync,
 } from "node:fs";
-import { join } from "node:path";
 import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { execa } from "execa";
 import { jsxToString } from "jsx-async-runtime";
 import type {
@@ -126,7 +126,15 @@ module.exports = {
 	try {
 		await execa(
 			"npx",
-			["tailwindcss", "-i", inputCssPath, "-o", outputCssPath, "-c", tailwindConfigPath],
+			[
+				"tailwindcss",
+				"-i",
+				inputCssPath,
+				"-o",
+				outputCssPath,
+				"-c",
+				tailwindConfigPath,
+			],
 			{ env: { ...process.env } },
 		);
 	} finally {
