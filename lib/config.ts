@@ -9,6 +9,14 @@ export interface ConvexDocConfigFile {
 	deploymentUrl?: string;
 	adminKey?: string;
 	verboseLogs?: boolean;
+	/**
+	 * Which Convex deployment environment to target when fetching the function
+	 * spec. Defaults to "dev".
+	 *
+	 * - "dev": use the default `convex function-spec` behavior (dev deployment)
+	 * - "prod": run `convex function-spec --prod` to inspect production
+	 */
+	deploymentEnv?: "dev" | "prod";
 }
 
 export interface ResolvedAppConfig {
@@ -19,6 +27,8 @@ export interface ResolvedAppConfig {
 	deploymentUrl?: string;
 	adminKey?: string;
 	verboseLogs: boolean;
+	/** Normalized deployment environment ("dev" or "prod"). */
+	deploymentEnv: "dev" | "prod";
 	configPath?: string;
 }
 
@@ -28,6 +38,11 @@ export interface ResolveAppConfigOptions {
 	serverPort?: string | number;
 	httpActionDeployUrl?: string;
 	verboseLogs?: boolean;
+	/**
+	 * Optional override for deployment environment. If omitted, falls back to
+	 * CONVEXDOC_ENV, then convexdoc.config.json, then "dev".
+	 */
+	deploymentEnv?: "dev" | "prod";
 }
 
 const DEFAULT_SERVER_PORT = 3000;
@@ -58,6 +73,15 @@ export function resolveAppConfig(
 		fileConfig.data.verboseLogs ??
 		false;
 
+	const deploymentEnvRaw =
+		options.deploymentEnv ??
+		(process.env.CONVEXDOC_ENV as "dev" | "prod" | undefined) ??
+		fileConfig.data.deploymentEnv ??
+		"dev";
+
+	const deploymentEnv: "dev" | "prod" =
+		deploymentEnvRaw === "prod" ? "prod" : "dev";
+
 	const docsDirRaw = fileConfig.data.docsDir ?? DEFAULT_DOCS_DIR;
 
 	return {
@@ -78,6 +102,7 @@ export function resolveAppConfig(
 			fileConfig.data.adminKey ??
 			process.env.CONVEX_ADMIN_KEY,
 		verboseLogs,
+		deploymentEnv,
 		configPath: fileConfig.path,
 	};
 }

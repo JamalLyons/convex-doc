@@ -9,6 +9,12 @@ import {
 	query,
 } from "./_generated/server";
 
+const CORS_HEADERS = {
+	"Access-Control-Allow-Origin": "*",
+	"Access-Control-Allow-Methods": "GET,OPTIONS",
+	"Access-Control-Allow-Headers": "Content-Type, Authorization",
+} as const;
+
 /**
  * Get a task by ID.
  *
@@ -68,9 +74,25 @@ export const runTask = action({
 export const handleTaskRequest = httpAction(async (_ctx, request) => {
 	const url = new URL(request.url);
 	const name = url.searchParams.get("name") ?? "world";
+	console.log("handleTaskRequest", name);
 	return new Response(JSON.stringify({ message: `Hello, ${name}` }), {
 		status: 200,
-		headers: { "Content-Type": "application/json" },
+		headers: {
+			"Content-Type": "application/json",
+			...CORS_HEADERS,
+		},
+	});
+});
+
+/**
+ * Preflight / CORS handler for the task endpoint.
+ */
+export const handleTaskOptions = httpAction(async (_ctx, _request) => {
+	return new Response(null, {
+		status: 204,
+		headers: {
+			...CORS_HEADERS,
+		},
 	});
 });
 

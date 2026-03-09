@@ -1,6 +1,7 @@
 import { createReadStream, existsSync, statSync } from "node:fs";
 import { createServer } from "node:http";
 import { join, normalize } from "node:path";
+import chalk from "chalk";
 
 export interface RunRequestBody {
 	functionType: "query" | "mutation" | "action";
@@ -57,14 +58,34 @@ export async function serveDocsSite(opts: {
 		const requestId = Math.random().toString(36).slice(2, 8);
 		const reqMethod = req.method ?? "GET";
 		const reqPath = req.url ?? "/";
+
 		const log = (message: string) => {
 			if (!verboseLogs) return;
-			console.log(`[convexdoc:${requestId}] ${message}`);
+			console.log(
+				chalk.dim(`[convexdoc:${requestId}] `) + message,
+			);
 		};
+
 		const logEnd = (status: number) => {
 			const duration = Date.now() - reqStart;
+			const methodColor = chalk.magentaBright;
+			const pathColor = chalk.blue;
+			const arrow = chalk.dim("->");
+			const durationText = chalk.dim(`(${duration}ms)`);
+
+			let statusColor: (s: string) => string = chalk.white;
+			if (status >= 500) statusColor = chalk.red;
+			else if (status >= 400) statusColor = chalk.yellow;
+			else if (status >= 300) statusColor = chalk.cyan;
+			else if (status >= 200) statusColor = chalk.green;
+
 			console.log(
-				`[convexdoc] ${reqMethod} ${reqPath} -> ${status} (${duration}ms)`,
+				chalk.dim("[convexdoc]"),
+				methodColor(reqMethod),
+				pathColor(reqPath),
+				arrow,
+				statusColor(String(status)),
+				durationText,
 			);
 		};
 		try {
@@ -150,7 +171,7 @@ export async function serveDocsSite(opts: {
 				}
 
 				const t0 = Date.now();
-				log(`proxy -> ${endpoint}`);
+				log(`${chalk.dim("proxy ->")} ${chalk.cyan(endpoint)}`);
 				const upstream = await fetch(endpoint, {
 					method: "POST",
 					headers,

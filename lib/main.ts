@@ -38,7 +38,9 @@ program
 	.option("-o, --output <file>", "Write raw spec JSON to a file")
 	.option("--json", "Output raw JSON instead of formatted display")
 	.action(async (opts) => {
-		const appConfig = resolveAppConfig({ projectDir: opts.projectDir });
+		const appConfig = resolveAppConfig({
+			projectDir: opts.projectDir,
+		});
 		const spinner = ora("Fetching function spec from Convex...").start();
 
 		let rawSpec: FunctionSpecOutput;
@@ -47,6 +49,7 @@ program
 				projectDir: appConfig.projectDir,
 				deploymentUrl: appConfig.deploymentUrl,
 				adminKey: appConfig.adminKey,
+				deploymentEnv: appConfig.deploymentEnv,
 			});
 			spinner.succeed("Function spec fetched successfully");
 		} catch (err: unknown) {
@@ -87,16 +90,18 @@ program
 		"Path to your Convex project root",
 	)
 	.action(async (opts) => {
-		const appConfig = resolveAppConfig({ projectDir: opts.projectDir });
-		const projectDir = appConfig.projectDir;
+		const appConfig = resolveAppConfig({
+			projectDir: opts.projectDir,
+		});
 		const spinner = ora("Fetching function spec...").start();
 
 		let rawSpec: FunctionSpecOutput;
 		try {
 			rawSpec = await fetchFunctionSpec({
-				projectDir,
+				projectDir: appConfig.projectDir,
 				deploymentUrl: appConfig.deploymentUrl,
 				adminKey: appConfig.adminKey,
+				deploymentEnv: appConfig.deploymentEnv,
 			});
 			spinner.succeed("Function spec fetched");
 		} catch (err: unknown) {
@@ -121,8 +126,10 @@ program
 		spinner.start("Generating docs...");
 		const outputDir = appConfig.docsDir;
 		try {
-			await generateDocs(parsed, outputDir, projectDir, {
+			await generateDocs(parsed, outputDir, appConfig.projectDir, {
 				httpActionDeployUrl: appConfig.httpActionDeployUrl,
+				deploymentEnv: appConfig.deploymentEnv,
+				deploymentUrl: appConfig.deploymentUrl,
 			});
 			spinner.succeed(
 				`Docs written to ${outputDir}. Run \`convexdoc serve\` to view.`,
@@ -150,7 +157,6 @@ program
 			serverPort: opts.port,
 			verboseLogs: opts.verboseLogs === true ? true : undefined,
 		});
-		const projectDir = appConfig.projectDir;
 		const docsDir = appConfig.docsDir;
 
 		if (!existsSync(docsDir)) {
@@ -168,6 +174,84 @@ program
 					`No index.html in ${docsDir}. Run \`convexdoc generate\` first.`,
 				),
 			);
+			process.exit(1);
+		}
+
+		const port = String(appConfig.serverPort);
+		const url = `http://localhost:${port}`;
+		console.log(chalk.green(`Serving docs at ${chalk.bold(url)}`));
+		console.log(chalk.dim("Press Ctrl+C to stop.\n"));
+
+		await serveDocsSite({
+			docsDir,
+			port: appConfig.serverPort,
+			verboseLogs: appConfig.verboseLogs,
+			deploymentUrl: appConfig.deploymentUrl,
+			adminKey: appConfig.adminKey,
+		});
+	});
+
+// ─── `start` command ───────────────────────────────────────────────────────────
+program
+	.command("start")
+	.description("Generate docs and then serve the docs site locally")
+	.option(
+		"-p, --project-dir <path>",
+		"Path to your Convex project root",
+	)
+	.option("-P, --port <number>", "Port to listen on")
+	.option("--verbose-logs", "Enable detailed request logs")
+	.action(async (opts) => {
+		const appConfig = resolveAppConfig({
+			projectDir: opts.projectDir,
+			serverPort: opts.port,
+			verboseLogs: opts.verboseLogs === true ? true : undefined,
+		});
+
+		const spinner = ora("Fetching function spec...").start();
+
+		let rawSpec: FunctionSpecOutput;
+		try {
+			rawSpec = await fetchFunctionSpec({
+				projectDir: appConfig.projectDir,
+				deploymentUrl: appConfig.deploymentUrl,
+				adminKey: appConfig.adminKey,
+				deploymentEnv: appConfig.deploymentEnv,
+			});
+			spinner.succeed("Function spec fetched");
+		} catch (err: unknown) {
+			spinner.fail("Failed to fetch function spec");
+			console.error(chalk.red((err as Error).message));
+			process.exit(1);
+		}
+
+		const parsed = parseFunctionSpec(rawSpec);
+		if (parsed.warnings?.length) {
+			console.log(chalk.yellow(`Parser warnings: ${parsed.warnings.length}`));
+		}
+		if (parsed.summary.total === 0) {
+			console.log(
+				chalk.yellow(
+					"No functions found. Push your Convex functions first (e.g. npx convex dev), then run start again.",
+				),
+			);
+			process.exit(0);
+		}
+
+		spinner.start("Generating docs...");
+		const docsDir = appConfig.docsDir;
+		try {
+			await generateDocs(parsed, docsDir, appConfig.projectDir, {
+				httpActionDeployUrl: appConfig.httpActionDeployUrl,
+				deploymentEnv: appConfig.deploymentEnv,
+				deploymentUrl: appConfig.deploymentUrl,
+			});
+			spinner.succeed(
+				`Docs written to ${docsDir}. Starting local server...`,
+			);
+		} catch (err: unknown) {
+			spinner.fail("Generate failed");
+			console.error(chalk.red((err as Error).message));
 			process.exit(1);
 		}
 

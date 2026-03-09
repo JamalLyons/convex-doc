@@ -227,6 +227,8 @@ export async function generateDocs(
 	projectDir: string,
 	options?: {
 		httpActionDeployUrl?: string;
+		deploymentEnv?: "dev" | "prod";
+		deploymentUrl?: string;
 	},
 ): Promise<void> {
 	if (existsSync(outputDir)) {
@@ -243,6 +245,14 @@ export async function generateDocs(
 	// JSDoc enrichment (best-effort)
 	const docsByIdentifier = await extractJsDocs(projectDir, spec);
 	const httpRoutes = await extractHttpRoutes(projectDir, spec);
+
+	const buildInfo = {
+		generatedAt: new Date().toISOString(),
+		defaultHttpActionDeployUrl:
+			options?.httpActionDeployUrl ?? "http://localhost:3218",
+		deploymentEnv: options?.deploymentEnv ?? "dev",
+		deploymentUrl: options?.deploymentUrl,
+	};
 
 	// Write manifest scaffold (HTTP routes merged later)
 	const functions = spec.raw.map((fn) => {
@@ -265,11 +275,7 @@ export async function generateDocs(
 	});
 
 	const manifest = {
-		buildInfo: {
-			generatedAt: new Date().toISOString(),
-			defaultHttpActionDeployUrl:
-				options?.httpActionDeployUrl ?? "http://localhost:3218",
-		},
+		buildInfo,
 		summary: spec.summary,
 		modules: spec.modules.map((m) => ({
 			name: m.name,
@@ -296,6 +302,7 @@ export async function generateDocs(
 				title="API Overview"
 				baseHref={baseHref}
 				nav={{ spec, moduleSlugs }}
+				buildInfo={buildInfo}
 			/>,
 		);
 	writeFileSync(join(outputDir, "index.html"), indexHtml, "utf-8");
@@ -314,6 +321,7 @@ export async function generateDocs(
 					title={mod.name}
 					baseHref={baseHref}
 					nav={{ spec, moduleSlugs, activeModuleName: mod.name }}
+					buildInfo={buildInfo}
 				/>,
 			);
 		writeFileSync(join(outputDir, filename), pageHtml, "utf-8");

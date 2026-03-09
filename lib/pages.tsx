@@ -21,6 +21,12 @@ export interface PageProps {
 		/** Active module name (for nav highlight), if any */
 		activeModuleName?: string;
 	};
+	buildInfo?: {
+		generatedAt?: string;
+		defaultHttpActionDeployUrl?: string;
+		deploymentEnv?: "dev" | "prod";
+		deploymentUrl?: string;
+	};
 }
 
 export interface IndexPageProps extends PageProps {
@@ -64,6 +70,35 @@ function functionBorderColor(type: string): string {
 	}
 }
 
+function docsLinkForFunctionType(
+	type: string,
+): { href: string; label: string } | null {
+	switch (type) {
+		case "query":
+			return {
+				href: "https://docs.convex.dev/functions/query-functions",
+				label: "Convex queries",
+			};
+		case "mutation":
+			return {
+				href: "https://docs.convex.dev/functions/mutation-functions",
+				label: "Convex mutations",
+			};
+		case "action":
+			return {
+				href: "https://docs.convex.dev/functions/actions",
+				label: "Convex actions",
+			};
+		case "httpAction":
+			return {
+				href: "https://docs.convex.dev/functions/http-actions",
+				label: "Convex HTTP actions",
+			};
+		default:
+			return null;
+	}
+}
+
 function moduleDisplayName(name: string): string {
 	if (name === "http") return "built-in: http";
 	if (name === "(root)") return "root";
@@ -76,9 +111,31 @@ function Layout({
 	title,
 	baseHref = "",
 	nav,
+	buildInfo,
 }: PageProps & { children?: ReactNode }) {
 	const indexHref = baseHref ? `${baseHref}index.html` : "index.html";
 	const modules = nav.spec.modules;
+
+	const env =
+		buildInfo?.deploymentEnv === "prod"
+			? ("prod" as const)
+			: ("dev" as const);
+	const envLabel = env === "prod" ? "Production" : "Development";
+	const envClass =
+		env === "prod"
+			? "text-emerald-300 bg-emerald-500/10 ring-1 ring-emerald-500/40"
+			: "text-sky-200 bg-sky-500/10 ring-1 ring-sky-500/40";
+
+	let deploymentName: string | null = null;
+	if (buildInfo?.deploymentUrl) {
+		try {
+			const url = new URL(buildInfo.deploymentUrl);
+			const host = url.hostname;
+			deploymentName = host.split(".")[0] || host;
+		} catch {
+			deploymentName = buildInfo.deploymentUrl;
+		}
+	}
 	return (
 		<html lang="en" className="h-full scroll-pt-24">
 			<head>
@@ -99,7 +156,7 @@ function Layout({
 				<script type="module" src={`${baseHref}app.js`} defer />
 			</head>
 			<body
-				className="h-full antialiased"
+				className="min-h-screen antialiased flex flex-col"
 				style={{
 					backgroundColor: "var(--phoenix-app-bg)",
 					color: "var(--phoenix-text)",
@@ -147,13 +204,27 @@ function Layout({
 								</span>
 							</button>
 
-							<a
-								href="https://docs.convex.dev"
-								className="ml-auto hidden sm:inline-flex items-center gap-2 rounded-lg px-3 py-2 text-sm text-slate-300 hover:text-white hover:bg-white/5"
-							>
-								Convex docs
-							</a>
-							
+							<div className="ml-auto hidden sm:flex items-center gap-3">
+								{deploymentName ? (
+									<div className="flex flex-col items-end leading-tight">
+										<div className="text-xs font-medium text-slate-200">
+											{deploymentName}
+										</div>
+										<div
+											className={`mt-0.5 inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${envClass}`}
+										>
+											{envLabel}
+										</div>
+									</div>
+								) : (
+									<div
+										className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${envClass}`}
+									>
+										{envLabel}
+									</div>
+								)}
+							</div>
+
 							<button
 								type="button"
 								id="theme-toggle"
@@ -166,7 +237,7 @@ function Layout({
 					</div>
 				</header>
 
-				<div className="mx-auto max-w-[1280px] px-4 sm:px-6">
+				<div className="mx-auto max-w-[1280px] px-4 sm:px-6 flex-1 w-full">
 					<div className="grid grid-cols-1 lg:grid-cols-[280px_minmax(0,1fr)] gap-8 py-8">
 						<aside className="hidden lg:block">
 							<div className="sticky top-24">
@@ -196,11 +267,10 @@ function Layout({
 													<li key={mod.name}>
 														<a
 															href={baseHref ? `${baseHref}${href}` : href}
-															className={`flex items-center justify-between gap-3 rounded-xl px-3 py-2 text-sm ring-1 ring-inset ${
-																active
-																	? "bg-white/10 text-white ring-white/15"
-																	: "text-slate-300 ring-transparent hover:bg-white/5 hover:text-white"
-															}`}
+															className={`flex items-center justify-between gap-3 rounded-xl px-3 py-2 text-sm ring-1 ring-inset ${active
+																? "bg-white/10 text-white ring-white/15"
+																: "text-slate-300 ring-transparent hover:bg-white/5 hover:text-white"
+																}`}
 														>
 															<span className="truncate">
 																{moduleDisplayName(mod.name)}
@@ -222,7 +292,7 @@ function Layout({
 					</div>
 				</div>
 
-				<footer className="border-t border-white/10">
+				<footer className="mt-auto border-t border-white/10">
 					<div className="mx-auto max-w-[1280px] px-4 sm:px-6 py-6 text-xs text-slate-400 flex items-center justify-between">
 						<div>
 							Generated by{" "}
@@ -273,10 +343,16 @@ function Layout({
 	);
 }
 
-export function IndexPage({ spec, title, baseHref = "", nav }: IndexPageProps) {
+export function IndexPage({
+	spec,
+	title,
+	baseHref = "",
+	nav,
+	buildInfo,
+}: IndexPageProps) {
 	const { summary, modules } = spec;
 	return (
-		<Layout title={title} baseHref={baseHref} nav={nav}>
+		<Layout title={title} baseHref={baseHref} nav={nav} buildInfo={buildInfo}>
 			<section className="mb-10">
 				<h1 className="font-[Sora] text-3xl sm:text-4xl font-semibold tracking-tight">
 					API Overview
@@ -369,10 +445,11 @@ export function ModulePage({
 	title,
 	baseHref = "",
 	nav,
+	buildInfo,
 }: ModulePageProps) {
 	const indexHref = baseHref ? `${baseHref}index.html` : "index.html";
 	return (
-		<Layout title={title} baseHref={baseHref} nav={nav}>
+		<Layout title={title} baseHref={baseHref} nav={nav} buildInfo={buildInfo}>
 			<nav className="text-xs text-slate-400 mb-4">
 				<a href={indexHref} className="hover:text-slate-200">
 					Overview
@@ -413,6 +490,7 @@ export function ModulePage({
 						{module.functions.map((fn) => {
 							const argsStr = formatArgs(fn);
 							const returnsStr = formatReturns(fn);
+							const docsLink = docsLinkForFunctionType(fn.functionType);
 							return (
 								<li
 									key={fn.identifier}
@@ -443,7 +521,7 @@ export function ModulePage({
 											className="ml-auto inline-flex items-center rounded-lg phoenix-btn-primary px-3 py-1.5 text-xs text-white shadow-md shadow-red-500/20"
 											data-convexdoc-try
 										>
-											Try it
+											Run
 										</button>
 									</div>
 
@@ -492,22 +570,26 @@ export function ModulePage({
 										</div>
 									</div>
 
-									<div
-										className="mt-4 hidden"
-										data-convexdoc-inline-runner
-										aria-hidden="true"
-									>
-										<div className="rounded-xl bg-black/35 ring-1 ring-white/10 p-3 text-sm text-slate-300">
-											Runner UI will load here when served locally.
+									{docsLink ? (
+										<div className="mt-3 text-[11px] text-slate-400">
+											<a
+												href={docsLink.href}
+												target="_blank"
+												rel="noreferrer"
+												className="inline-flex items-center gap-1 text-sky-300 hover:text-sky-100"
+											>
+												<span>Learn more about {docsLink.label}</span>
+												<span aria-hidden="true">↗</span>
+											</a>
 										</div>
-									</div>
+									) : null}
 								</li>
 							);
 						})}
 					</ul>
 				</div>
 
-				<aside className="hidden xl:block mt-8">
+				<aside className="mt-8">
 					<div className="sticky top-24 space-y-6">
 						<div className="rounded-2xl phoenix-glass overflow-hidden">
 							<div className="px-4 py-3 border-b border-white/10">
@@ -537,7 +619,7 @@ export function ModulePage({
 									className="text-sm font-semibold"
 									style={{ color: "var(--phoenix-text)" }}
 								>
-									Try it
+									Function Runner
 								</div>
 								<div
 									className="mt-1 text-xs"

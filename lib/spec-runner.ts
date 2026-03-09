@@ -10,6 +10,12 @@ export interface FunctionSpecOptions {
 	deploymentUrl?: string;
 	/** Admin key for the deployment */
 	adminKey?: string;
+	/**
+	 * Target Convex deployment environment.
+	 * - "dev" (default): use the dev deployment
+	 * - "prod": pass --prod to `convex function-spec`
+	 */
+	deploymentEnv?: "dev" | "prod";
 }
 
 /**
@@ -24,6 +30,9 @@ export async function fetchFunctionSpec(
 	ensureConvexProject(projectDir);
 
 	const args = ["convex", "function-spec"];
+	if (opts.deploymentEnv === "prod") {
+		args.push("--prod");
+	}
 	const env: Record<string, string> = {};
 
 	if (opts.deploymentUrl) {

@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { createRoot } from "react-dom/client";
 
 type FunctionType = "query" | "mutation" | "action" | "httpAction";
@@ -110,6 +110,7 @@ async function runFunction(
 	bearerToken: string,
 	manifest: ManifestShape,
 	deployUrl: string,
+	extraHeaders?: Record<string, string>,
 ): Promise<RunResult> {
 	if (fn.functionType === "httpAction") {
 		const route =
@@ -124,6 +125,11 @@ async function runFunction(
 
 		const headers = new Headers();
 		if (bearerToken) headers.set("Authorization", `Bearer ${bearerToken}`);
+		if (extraHeaders) {
+			for (const [key, value] of Object.entries(extraHeaders)) {
+				if (key) headers.set(key, String(value));
+			}
+		}
 
 		const fetchArgs: { method: string; headers: Headers; body?: string } = {
 			method,
@@ -257,12 +263,17 @@ function RunnerPanel({
 	const [isRunning, setRunning] = useState(false);
 	const [response, setResponse] = useState<string>("Response will appear here.");
 	const [statusLine, setStatusLine] = useState<string>("");
+	const [headersJson, setHeadersJson] = useState<string>("{}");
 
 	useEffect(() => {
 		const next = fn
 			? localStorage.getItem(`convexdoc:args:${fn.identifier}`) ?? "{}"
 			: "{}";
 		setJsonArgs(next);
+		const nextHeaders = fn
+			? localStorage.getItem(`convexdoc:headers:${fn.identifier}`) ?? "{}"
+			: "{}";
+		setHeadersJson(nextHeaders);
 		setToken(localStorage.getItem(tokenKey) ?? "");
 		const defaultUrl =
 			manifest?.buildInfo?.defaultHttpActionDeployUrl ?? "http://localhost:3218";
@@ -270,6 +281,8 @@ function RunnerPanel({
 		setResponse("Response will appear here.");
 		setStatusLine("");
 	}, [fn, manifest]);
+
+	const isHttpAction = fn?.functionType === "httpAction";
 
 	if (!manifest) {
 		return (
@@ -290,6 +303,7 @@ function RunnerPanel({
 		setRunning(true);
 		setStatusLine("");
 		let args: Record<string, unknown>;
+		let headers: Record<string, string> | undefined;
 		try {
 			args = jsonArgs.trim()
 				? (JSON.parse(jsonArgs) as Record<string, unknown>)
@@ -301,12 +315,41 @@ function RunnerPanel({
 			return;
 		}
 
+		if (isHttpAction) {
+			try {
+				const parsed = headersJson.trim()
+					? (JSON.parse(headersJson) as Record<string, unknown>)
+					: {};
+				headers = Object.fromEntries(
+					Object.entries(parsed).map(([k, v]) => [k, String(v)]),
+				);
+			} catch (err) {
+				setResponse((err as Error).message);
+				setStatusLine("Invalid headers");
+				setRunning(false);
+				return;
+			}
+		}
+
 		localStorage.setItem(argsKey, prettyJson(args));
+		if (isHttpAction) {
+			localStorage.setItem(
+				`convexdoc:headers:${fn.identifier}`,
+				headersJson || "{}",
+			);
+		}
 		localStorage.setItem(tokenKey, token);
 		sessionStorage.setItem(STORAGE.deployUrl, deployUrl);
 
 		try {
-			const result = await runFunction(fn, args, token.trim(), manifest, deployUrl);
+			const result = await runFunction(
+				fn,
+				args,
+				token.trim(),
+				manifest,
+				deployUrl,
+				headers,
+			);
 			const ok = result.json?.status === "success";
 			const value = ok
 				? result.json.value
@@ -353,9 +396,9 @@ function RunnerPanel({
 
 			<div className="rounded-xl p-3 bg-[var(--phoenix-app-surface)] ring-1 ring-[var(--phoenix-border)] space-y-3">
 				<div>
-					<label className="block text-[11px] mb-1.5 text-[var(--phoenix-text-muted)]">
-						Deployment URL (for HTTP actions)
-					</label>
+					<div className="block text-[11px] mb-1.5 text-[var(--phoenix-text-muted)]">
+						Deployment URL{isHttpAction ? " (base, can include query string)" : ""}
+					</div>
 					<input
 						className="convexdoc-input w-full rounded-xl px-3 py-2 text-xs font-mono"
 						value={deployUrl}
@@ -363,9 +406,9 @@ function RunnerPanel({
 					/>
 				</div>
 				<div>
-					<label className="block text-[11px] mb-1.5 text-[var(--phoenix-text-muted)]">
+					<div className="block text-[11px] mb-1.5 text-[var(--phoenix-text-muted)]">
 						Admin Key / Auth Token (optional)
-					</label>
+					</div>
 					<input
 						className="convexdoc-input w-full rounded-xl px-3 py-2 text-xs font-mono"
 						placeholder="Token"
@@ -373,10 +416,24 @@ function RunnerPanel({
 						onChange={(e) => setToken(e.currentTarget.value)}
 					/>
 				</div>
+				{isHttpAction ? (
+					<div>
+						<div className="block text-[11px] mb-1.5 text-[var(--phoenix-text-muted)]">
+							Custom headers (JSON object)
+						</div>
+						<textarea
+							className="convexdoc-input w-full h-20 rounded-xl px-3 py-2 text-xs font-mono"
+							value={headersJson}
+							onChange={(e) => setHeadersJson(e.currentTarget.value)}
+						/>
+					</div>
+				) : null}
 			</div>
 
 			<div className="rounded-xl p-3 bg-[var(--phoenix-app-surface)] ring-1 ring-[var(--phoenix-border)] space-y-2">
-				<div className="text-xs font-semibold text-[var(--phoenix-text)]">Arguments (JSON)</div>
+				<div className="text-xs font-semibold text-[var(--phoenix-text)]">
+					{isHttpAction ? "Request body (JSON)" : "Arguments (JSON)"}
+				</div>
 				<textarea
 					className="convexdoc-input w-full h-36 rounded-xl px-3 py-2 text-xs font-mono"
 					value={jsonArgs}
@@ -541,7 +598,9 @@ function attachScrollSpy() {
 		},
 		{ rootMargin: "0px 0px -80% 0px" },
 	);
-	document.querySelectorAll("[data-convexdoc-fn]").forEach((el) => observer.observe(el));
+	document.querySelectorAll("[data-convexdoc-fn]").forEach((el) => {
+		observer.observe(el);
+	});
 }
 
 const manifestPromise = loadManifest().catch(() => null);
