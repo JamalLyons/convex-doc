@@ -41,8 +41,16 @@ export async function serveDocsSite(opts: {
 	docsDir: string;
 	port: number;
 	verboseLogs?: boolean;
+	deploymentUrl?: string;
+	adminKey?: string;
 }): Promise<void> {
-	const { docsDir, port, verboseLogs = false } = opts;
+	const {
+		docsDir,
+		port,
+		verboseLogs = false,
+		deploymentUrl,
+		adminKey,
+	} = opts;
 
 	const server = createServer(async (req, res) => {
 		const reqStart = Date.now();
@@ -115,7 +123,7 @@ export async function serveDocsSite(opts: {
 					return;
 				}
 
-				const convexUrl = process.env.CONVEX_URL;
+				const convexUrl = deploymentUrl ?? process.env.CONVEX_URL;
 				if (!convexUrl) {
 					res.statusCode = 500;
 					res.setHeader("content-type", "application/json; charset=utf-8");
@@ -136,9 +144,9 @@ export async function serveDocsSite(opts: {
 				};
 				if (body.bearerToken) {
 					headers.authorization = `Bearer ${body.bearerToken}`;
-				} else if (process.env.CONVEX_ADMIN_KEY) {
+				} else if (adminKey ?? process.env.CONVEX_ADMIN_KEY) {
 					// Best-effort: some environments may accept admin auth here.
-					headers.authorization = `Convex ${process.env.CONVEX_ADMIN_KEY}`;
+					headers.authorization = `Convex ${adminKey ?? process.env.CONVEX_ADMIN_KEY}`;
 				}
 
 				const t0 = Date.now();

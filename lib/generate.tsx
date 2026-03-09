@@ -166,6 +166,13 @@ export function moduleToSlug(name: string): string {
 	return name.replace(/\//g, "_").replace(/[^a-zA-Z0-9_-]/g, "_") || "module";
 }
 
+function moduleDisplayName(name: string): string {
+	if (name === "http") return "built-in: http";
+	if (name === "(root)") return "root";
+	if (name === "unresolved") return "unresolved";
+	return name;
+}
+
 /**
  * Build module slug map. Index page uses "index" for linking to self; module pages use their slug.
  */
@@ -211,7 +218,7 @@ async function bundleClientApp(outputDir: string): Promise<void> {
 }
 
 /**
- * Generate static HTML and CSS into outputDir (e.g. project/convex/docs).
+ * Generate static HTML and CSS into outputDir (e.g. project/docs).
  * Ensures outputDir exists, writes index.html + one HTML file per module, then runs Tailwind.
  */
 export async function generateDocs(
@@ -246,10 +253,13 @@ export async function generateDocs(
 			identifier: fn.identifier,
 			name: getFunctionName(fn.identifier),
 			moduleName,
+			moduleDisplayName: moduleDisplayName(moduleName),
 			functionType: fn.functionType,
 			visibility: fn.visibility?.kind ?? "public",
 			args: fn.args ?? null,
 			returns: fn.returns ?? null,
+			httpMethod: fn.httpMethod ?? null,
+			httpPath: fn.httpPath ?? null,
 			href: `${moduleSlug}.html#${anchor}`,
 		};
 	});
@@ -263,6 +273,7 @@ export async function generateDocs(
 		summary: spec.summary,
 		modules: spec.modules.map((m) => ({
 			name: m.name,
+			displayName: moduleDisplayName(m.name),
 			slug: moduleSlugs.get(m.name) ?? moduleToSlug(m.name),
 			functionCount: m.functions.length,
 		})),

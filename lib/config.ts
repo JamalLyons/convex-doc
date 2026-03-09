@@ -1,9 +1,10 @@
 import { existsSync, readFileSync } from "node:fs";
-import { join, resolve } from "node:path";
+import { isAbsolute, join, resolve } from "node:path";
 
 export interface ConvexDocConfigFile {
 	projectDir?: string;
 	serverPort?: number;
+	docsDir?: string;
 	httpActionDeployUrl?: string;
 	deploymentUrl?: string;
 	adminKey?: string;
@@ -13,6 +14,7 @@ export interface ConvexDocConfigFile {
 export interface ResolvedAppConfig {
 	projectDir: string;
 	serverPort: number;
+	docsDir: string;
 	httpActionDeployUrl: string;
 	deploymentUrl?: string;
 	adminKey?: string;
@@ -29,6 +31,7 @@ export interface ResolveAppConfigOptions {
 }
 
 const DEFAULT_SERVER_PORT = 3000;
+const DEFAULT_DOCS_DIR = "docs";
 const DEFAULT_HTTP_ACTION_DEPLOY_URL = "http://localhost:3218";
 
 export function resolveAppConfig(
@@ -55,20 +58,25 @@ export function resolveAppConfig(
 		fileConfig.data.verboseLogs ??
 		false;
 
+	const docsDirRaw = fileConfig.data.docsDir ?? DEFAULT_DOCS_DIR;
+
 	return {
 		projectDir: resolve(projectDirRaw),
 		serverPort: parsePort(portRaw, DEFAULT_SERVER_PORT),
+		docsDir: isAbsolute(docsDirRaw)
+			? docsDirRaw
+			: resolve(projectDirRaw, docsDirRaw),
 		httpActionDeployUrl:
 			options.httpActionDeployUrl ??
 			process.env.CONVEXDOC_HTTP_ACTION_DEPLOY_URL ??
 			fileConfig.data.httpActionDeployUrl ??
 			DEFAULT_HTTP_ACTION_DEPLOY_URL,
 		deploymentUrl:
-			process.env.CONVEX_URL ??
-			fileConfig.data.deploymentUrl,
+			fileConfig.data.deploymentUrl ??
+			process.env.CONVEX_URL,
 		adminKey:
-			process.env.CONVEX_ADMIN_KEY ??
-			fileConfig.data.adminKey,
+			fileConfig.data.adminKey ??
+			process.env.CONVEX_ADMIN_KEY,
 		verboseLogs,
 		configPath: fileConfig.path,
 	};

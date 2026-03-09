@@ -89,7 +89,14 @@ export interface ObjectField {
 
 export interface ObjectValidator extends ValidatorBase {
 	type: "object";
-	fields: Record<string, ObjectField>;
+	/**
+	 * Canonical internal shape used by ConvexDoc after parse normalization.
+	 */
+	fields?: Record<string, ObjectField>;
+	/**
+	 * Raw Convex function-spec shape sometimes uses `value` for object members.
+	 */
+	value?: Record<string, ObjectField>;
 }
 
 export interface RecordValidator extends ValidatorBase {
@@ -136,12 +143,17 @@ export interface ConvexFunctionSpec {
 	args: ConvexValidator | null;
 	/** Validator for the return value — null if not defined */
 	returns: ConvexValidator | null;
+	/** Present for HTTP actions in some function-spec outputs. */
+	httpMethod?: string;
+	/** Present for HTTP actions in some function-spec outputs. */
+	httpPath?: string;
 }
 
 // ─── Top-level function-spec output ─────────────────────────────────────────
 
 export interface FunctionSpecOutput {
-	functions: ConvexFunctionSpec[];
+	url?: string;
+	functions: Record<string, unknown>[];
 }
 
 // ─── Parsed / enriched types for ConvexDoc ──────────────────────────────────

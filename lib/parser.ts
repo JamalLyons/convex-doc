@@ -66,6 +66,7 @@ export function parseFunctionSpec(raw: unknown): ParsedFunctionSpec {
 export function getModuleName(identifier: string | undefined): string {
 	if (identifier == null || typeof identifier !== "string") return "(root)";
 	if (identifier.startsWith("unresolved:")) return "unresolved";
+	if (identifier.startsWith("http:")) return "http";
 	const colonIdx = identifier.lastIndexOf(":");
 	let mod = colonIdx === -1 ? "(root)" : identifier.slice(0, colonIdx);
 
@@ -74,10 +75,6 @@ export function getModuleName(identifier: string | undefined): string {
 		mod = mod.slice(0, -3);
 	} else if (mod.endsWith(".ts")) {
 		mod = mod.slice(0, -3);
-	}
-	// Fallback for default httpAction grouping
-	if (colonIdx === -1 && identifier.includes("httpAction")) {
-		mod = "http";
 	}
 	return mod;
 }
@@ -107,8 +104,16 @@ export function formatValidator(v: ConvexValidator, depth = 0): string {
 							string,
 							{ fieldType: ConvexValidator; optional: boolean }
 						>;
+						value?: Record<
+							string,
+							{ fieldType: ConvexValidator; optional: boolean }
+						>;
 					}
-				).fields ?? {};
+				).fields ??
+				(v as {
+					value?: Record<string, { fieldType: ConvexValidator; optional: boolean }>;
+				}).value ??
+				{};
 			const fieldStrs = Object.entries(fields).map(([k, f]) => {
 				const opt = f.optional ? "?" : "";
 				return `${k}${opt}: ${formatValidator(f.fieldType, depth + 1)}`;
@@ -146,13 +151,12 @@ function normalizeFunctionSpec(
 	index: number,
 	warnings: string[],
 ): ConvexFunctionSpec {
-	const identifier = resolveIdentifier(raw, index);
+	const rawType = raw.functionType ?? raw.udfType ?? raw.type ?? "query";
+	const functionType = normalizeFunctionType(String(rawType));
+	const identifier = resolveIdentifier(raw, index, functionType);
 	if (identifier.startsWith("unresolved:")) {
 		warnings.push(`Unresolved function identifier at index ${index}`);
 	}
-
-	const rawType = raw.functionType ?? raw.udfType ?? raw.type ?? "query";
-	const functionType = normalizeFunctionType(String(rawType));
 
 	const rawVis = raw.visibility;
 	const visibility =
@@ -167,23 +171,34 @@ function normalizeFunctionSpec(
 		raw.returns ?? raw.returnValue ?? raw.returnValidator ?? raw.returnsValidator,
 	);
 
+	const httpMethod =
+		typeof raw.method === "string" && raw.method.trim()
+			? raw.method.toUpperCase()
+			: undefined;
+	const httpPath =
+		typeof raw.path === "string" && raw.path.trim() ? raw.path : undefined;
+
 	return {
 		identifier,
 		functionType,
 		visibility,
 		args,
 		returns,
+		httpMethod,
+		httpPath,
 	};
 }
 
 function parseValidatorField(value: unknown): ConvexFunctionSpec["args"] {
 	if (value == null) return null;
-	if (typeof value === "object") return value as ConvexFunctionSpec["args"];
+	if (typeof value === "object") {
+		return normalizeValidator(value) as ConvexFunctionSpec["args"];
+	}
 	if (typeof value === "string") {
 		try {
 			const parsed = JSON.parse(value) as unknown;
 			return parsed && typeof parsed === "object"
-				? (parsed as ConvexFunctionSpec["args"])
+				? (normalizeValidator(parsed) as ConvexFunctionSpec["args"])
 				: null;
 		} catch {
 			return null;
@@ -210,11 +225,14 @@ function normalizeFunctionType(s: string): ConvexFunctionType {
 	return "query";
 }
 
-function resolveIdentifier(raw: RawFunctionEntry, index: number): string {
+function resolveIdentifier(
+	raw: RawFunctionEntry,
+	index: number,
+	functionType: ConvexFunctionType,
+): string {
 	const candidates = [
 		raw.identifier,
 		raw.name,
-		raw.path,
 		raw.udfPath,
 		raw.canonicalName,
 	];
@@ -223,7 +241,76 @@ function resolveIdentifier(raw: RawFunctionEntry, index: number): string {
 			return candidate;
 		}
 	}
+	if (functionType === "httpAction") {
+		const method =
+			typeof raw.method === "string" && raw.method.trim()
+				? raw.method.toUpperCase()
+				: "GET";
+		const path =
+			typeof raw.path === "string" && raw.path.trim() ? raw.path : "/";
+		return `http:${method} ${path}`;
+	}
 	return `unresolved:${index}`;
+}
+
+function normalizeValidator(value: unknown): unknown {
+	if (!value || typeof value !== "object") return value;
+	if (Array.isArray(value)) return value.map(normalizeValidator);
+	const obj = value as Record<string, unknown>;
+	const type = obj.type;
+	if (type === "object") {
+		const fields = obj.fields ?? obj.value;
+		const normalizedFields: Record<string, unknown> = {};
+		if (fields && typeof fields === "object") {
+			for (const [key, field] of Object.entries(
+				fields as Record<string, unknown>,
+			)) {
+				const f = field as Record<string, unknown>;
+				normalizedFields[key] = {
+					optional: Boolean(f?.optional),
+					fieldType: normalizeValidator(f?.fieldType),
+				};
+			}
+		}
+		return {
+			...obj,
+			fields: normalizedFields,
+		};
+	}
+	if (type === "array" || type === "set") {
+		return {
+			...obj,
+			items: normalizeValidator(obj.items),
+		};
+	}
+	if (type === "map") {
+		return {
+			...obj,
+			keys: normalizeValidator(obj.keys),
+			values: normalizeValidator(obj.values),
+		};
+	}
+	if (type === "record") {
+		const values = obj.values as Record<string, unknown> | undefined;
+		return {
+			...obj,
+			keys: normalizeValidator(obj.keys),
+			values: values
+				? {
+						...values,
+						fieldType: normalizeValidator(values.fieldType),
+					}
+				: values,
+		};
+	}
+	if (type === "union") {
+		const members = Array.isArray(obj.members) ? obj.members : [];
+		return {
+			...obj,
+			members: members.map(normalizeValidator),
+		};
+	}
+	return obj;
 }
 
 function validateRawOutput(raw: unknown): { functions: RawFunctionEntry[] } {

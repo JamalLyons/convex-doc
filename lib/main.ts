@@ -15,7 +15,6 @@ import {
 	parseFunctionSpec,
 } from "./parser.js";
 import { fetchFunctionSpec } from "./spec-runner.js";
-import fs from "node:fs";
 
 const program = new Command();
 
@@ -82,7 +81,7 @@ program
 // ─── `generate` command ──────────────────────────────────────────────────────
 program
 	.command("generate")
-	.description("Generate static HTML documentation into convex/docs")
+	.description("Generate static HTML documentation into docs")
 	.option(
 		"-p, --project-dir <path>",
 		"Path to your Convex project root",
@@ -120,7 +119,7 @@ program
 		}
 
 		spinner.start("Generating docs...");
-		const outputDir = join(projectDir, "convex", "docs");
+		const outputDir = appConfig.docsDir;
 		try {
 			await generateDocs(parsed, outputDir, projectDir, {
 				httpActionDeployUrl: appConfig.httpActionDeployUrl,
@@ -152,7 +151,7 @@ program
 			verboseLogs: opts.verboseLogs === true ? true : undefined,
 		});
 		const projectDir = appConfig.projectDir;
-		const docsDir = join(projectDir, "convex", "docs");
+		const docsDir = appConfig.docsDir;
 
 		if (!existsSync(docsDir)) {
 			console.error(
@@ -181,6 +180,8 @@ program
 			docsDir,
 			port: appConfig.serverPort,
 			verboseLogs: appConfig.verboseLogs,
+			deploymentUrl: appConfig.deploymentUrl,
+			adminKey: appConfig.adminKey,
 		});
 	});
 

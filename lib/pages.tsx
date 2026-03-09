@@ -64,6 +64,13 @@ function functionBorderColor(type: string): string {
 	}
 }
 
+function moduleDisplayName(name: string): string {
+	if (name === "http") return "built-in: http";
+	if (name === "(root)") return "root";
+	if (name === "unresolved") return "unresolved";
+	return name;
+}
+
 function Layout({
 	children,
 	title,
@@ -195,7 +202,9 @@ function Layout({
 																	: "text-slate-300 ring-transparent hover:bg-white/5 hover:text-white"
 															}`}
 														>
-															<span className="truncate">{mod.name}</span>
+															<span className="truncate">
+																{moduleDisplayName(mod.name)}
+															</span>
 															<span className="shrink-0 rounded-lg bg-black/30 px-2 py-0.5 text-xs text-slate-300 ring-1 ring-white/10">
 																{mod.functions.length}
 															</span>
@@ -334,7 +343,7 @@ export function IndexPage({ spec, title, baseHref = "", nav }: IndexPageProps) {
 								>
 									<div className="flex items-center justify-between gap-3">
 										<span className="font-medium text-white group-hover:text-sky-100 truncate">
-											{mod.name}
+											{moduleDisplayName(mod.name)}
 										</span>
 										<span className="shrink-0 rounded-lg bg-black/30 px-2 py-0.5 text-xs text-slate-300 ring-1 ring-white/10">
 											{mod.functions.length} fn
@@ -369,13 +378,13 @@ export function ModulePage({
 					Overview
 				</a>
 				<span className="mx-2 text-slate-600">/</span>
-				<span className="text-slate-200">{module.name}</span>
+				<span className="text-slate-200">{moduleDisplayName(module.name)}</span>
 			</nav>
 
 			<div className="flex flex-wrap items-end justify-between gap-4 mb-8">
 				<div>
 					<h1 className="font-[Sora] text-3xl sm:text-4xl font-semibold tracking-tight">
-						{module.name}
+						{moduleDisplayName(module.name)}
 					</h1>
 					<p className="mt-2 text-slate-300">
 						{module.functions.length} function

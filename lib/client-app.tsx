@@ -7,10 +7,13 @@ interface ManifestFunction {
 	identifier: string;
 	name: string;
 	moduleName: string;
+	moduleDisplayName?: string;
 	functionType: FunctionType;
 	visibility: "public" | "internal";
 	args: Record<string, unknown> | null;
 	returns: Record<string, unknown> | null;
+	httpMethod?: string | null;
+	httpPath?: string | null;
 	href: string;
 }
 
@@ -74,6 +77,33 @@ function prettyJson(v: unknown): string {
 	}
 }
 
+function formatValidator(value: unknown, depth = 0): string {
+	if (!value || typeof value !== "object") return "unknown";
+	const validator = value as Record<string, unknown>;
+	const type = String(validator.type ?? "unknown");
+	if (type === "object") {
+		const rawFields =
+			(validator.fields as Record<string, unknown> | undefined) ??
+			(validator.value as Record<string, unknown> | undefined) ??
+			{};
+		const fields = Object.entries(rawFields).map(([key, rawField]) => {
+			const field = rawField as Record<string, unknown>;
+			const optional = field.optional ? "?" : "";
+			return `${key}${optional}: ${formatValidator(field.fieldType, depth + 1)}`;
+		});
+		if (depth > 1) return "{ ... }";
+		return fields.length ? `{ ${fields.join(", ")} }` : "{}";
+	}
+	if (type === "array") return `${formatValidator(validator.items, depth)}[]`;
+	if (type === "union") {
+		const members = Array.isArray(validator.members) ? validator.members : [];
+		return members.map((m) => formatValidator(m, depth)).join(" | ");
+	}
+	if (type === "id") return `Id<"${String(validator.tableName ?? "")}">`;
+	if (type === "literal") return JSON.stringify(validator.value);
+	return type;
+}
+
 async function runFunction(
 	fn: ManifestFunction,
 	args: Record<string, unknown>,
@@ -82,11 +112,14 @@ async function runFunction(
 	deployUrl: string,
 ): Promise<RunResult> {
 	if (fn.functionType === "httpAction") {
-		const route = manifest.httpRoutes?.find(
-			(r) => r.handlerIdentifier === fn.identifier,
-		);
-		const path = route?.path ?? "/";
-		const method = route?.method ?? "GET";
+		const route =
+			manifest.httpRoutes?.find(
+				(r) =>
+					r.handlerIdentifier === fn.identifier ||
+					(r.path === fn.httpPath && r.method === fn.httpMethod),
+			) ?? null;
+		const path = route?.path ?? fn.httpPath ?? "/";
+		const method = route?.method ?? fn.httpMethod ?? "GET";
 		const startTime = Date.now();
 
 		const headers = new Headers();
@@ -186,7 +219,9 @@ function SearchResults({
 						</span>
 						<span className="font-mono text-sm text-[var(--phoenix-text)]">{it.identifier}</span>
 					</div>
-					<div className="mt-1 text-xs text-[var(--phoenix-text-muted)]">{it.moduleName}</div>
+					<div className="mt-1 text-xs text-[var(--phoenix-text-muted)]">
+						{it.moduleDisplayName ?? it.moduleName}
+					</div>
 				</a>
 			))}
 		</div>
@@ -364,6 +399,20 @@ function RunnerPanel({
 				<pre className="mt-2 text-[11px] leading-5 whitespace-pre-wrap text-[var(--phoenix-text)] overflow-auto">
 					{response}
 				</pre>
+			</div>
+			<div className="rounded-xl p-3 bg-[var(--phoenix-app-surface)] ring-1 ring-[var(--phoenix-border)] grid grid-cols-1 md:grid-cols-2 gap-3">
+				<div>
+					<div className="text-[11px] uppercase tracking-wide text-[var(--phoenix-text-muted)]">args</div>
+					<div className="mt-2 text-xs font-mono text-[var(--phoenix-text-dim)] break-words">
+						{fn.args ? formatValidator(fn.args) : "// no arguments required"}
+					</div>
+				</div>
+				<div>
+					<div className="text-[11px] uppercase tracking-wide text-[var(--phoenix-text-muted)]">returns</div>
+					<div className="mt-2 text-xs font-mono text-[var(--phoenix-text-dim)] break-words">
+						{fn.returns ? formatValidator(fn.returns) : "// no return validator"}
+					</div>
+				</div>
 			</div>
 		</div>
 	);

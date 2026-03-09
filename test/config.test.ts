@@ -13,8 +13,10 @@ test("resolveAppConfig reads defaults from convexdoc.config.json", () => {
 			JSON.stringify(
 				{
 					projectDir: ".",
+					docsDir: "docs",
 					serverPort: 4311,
 					httpActionDeployUrl: "http://localhost:9999",
+					deploymentUrl: "https://from-config.convex.cloud",
 					verboseLogs: true,
 				},
 				null,
@@ -23,7 +25,9 @@ test("resolveAppConfig reads defaults from convexdoc.config.json", () => {
 		);
 		const config = resolveAppConfig({ cwd: dir });
 		assert.equal(config.serverPort, 4311);
+		assert.equal(config.docsDir, join(dir, "docs"));
 		assert.equal(config.httpActionDeployUrl, "http://localhost:9999");
+		assert.equal(config.deploymentUrl, "https://from-config.convex.cloud");
 		assert.equal(config.verboseLogs, true);
 	} finally {
 		rmSync(dir, { recursive: true, force: true });
@@ -40,6 +44,20 @@ test("resolveAppConfig gives CLI options highest precedence", () => {
 		const config = resolveAppConfig({ cwd: dir, serverPort: 4500 });
 		assert.equal(config.serverPort, 4500);
 	} finally {
+		rmSync(dir, { recursive: true, force: true });
+	}
+});
+
+test("resolveAppConfig falls back to env for deploymentUrl", () => {
+	const dir = mkdtempSync(join(tmpdir(), "convexdoc-config-"));
+	const prev = process.env.CONVEX_URL;
+	process.env.CONVEX_URL = "https://from-env.convex.cloud";
+	try {
+		writeFileSync(join(dir, "convexdoc.config.json"), JSON.stringify({}, null, 2));
+		const config = resolveAppConfig({ cwd: dir });
+		assert.equal(config.deploymentUrl, "https://from-env.convex.cloud");
+	} finally {
+		process.env.CONVEX_URL = prev;
 		rmSync(dir, { recursive: true, force: true });
 	}
 });

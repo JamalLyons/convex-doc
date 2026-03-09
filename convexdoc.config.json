@@ -1,6 +1,8 @@
 {
 	"projectDir": ".",
+	"docsDir": "docs",
 	"serverPort": 3000,
+	"deploymentUrl": "https://fine-raven-957.convex.cloud",
 	"httpActionDeployUrl": "https://fine-raven-957.convex.site",
 	"verboseLogs": false
 }

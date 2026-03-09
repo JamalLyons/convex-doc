@@ -36,3 +36,42 @@ test("parser normalizes httpAction variants and alternate validator keys", () =>
 	assert.equal(fn?.args?.type, "object");
 	assert.equal(fn?.returns?.type, "string");
 });
+
+test("parser normalizes object validators that use value fields", () => {
+	const parsed = parseFunctionSpec({
+		functions: [
+			{
+				identifier: "tasks:createTask",
+				functionType: "mutation",
+				args: {
+					type: "object",
+					value: {
+						title: {
+							optional: true,
+							fieldType: { type: "string" },
+						},
+					},
+				},
+				returns: { type: "any" },
+				visibility: { kind: "public" },
+			},
+		],
+	});
+	const fn = parsed.raw[0];
+	assert.equal(fn?.args?.type, "object");
+	assert.ok("fields" in (fn?.args ?? {}));
+});
+
+test("parser derives stable http identifier from method/path", () => {
+	const parsed = parseFunctionSpec({
+		functions: [
+			{
+				functionType: "HttpAction",
+				method: "GET",
+				path: "/task",
+			},
+		],
+	});
+	assert.equal(parsed.raw[0]?.identifier, "http:GET /task");
+	assert.equal(parsed.modules[0]?.name, "http");
+});
