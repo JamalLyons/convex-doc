@@ -5,6 +5,7 @@ import { join, resolve } from "node:path";
 import chalk from "chalk";
 import { Command } from "commander";
 import ora from "ora";
+import { resolveAppConfig } from "./config.js";
 import type { FunctionSpecOutput } from "./function-spec.js";
 import { generateDocs } from "./generate.js";
 import { serveDocsSite } from "./local-server.js";
@@ -14,6 +15,7 @@ import {
 	parseFunctionSpec,
 } from "./parser.js";
 import { fetchFunctionSpec } from "./spec-runner.js";
+import fs from "node:fs";
 
 const program = new Command();
 
@@ -33,17 +35,19 @@ program
 	.option(
 		"-p, --project-dir <path>",
 		"Path to your Convex project root",
-		process.cwd(),
 	)
 	.option("-o, --output <file>", "Write raw spec JSON to a file")
 	.option("--json", "Output raw JSON instead of formatted display")
 	.action(async (opts) => {
+		const appConfig = resolveAppConfig({ projectDir: opts.projectDir });
 		const spinner = ora("Fetching function spec from Convex...").start();
 
 		let rawSpec: FunctionSpecOutput;
 		try {
 			rawSpec = await fetchFunctionSpec({
-				projectDir: resolve(opts.projectDir),
+				projectDir: appConfig.projectDir,
+				deploymentUrl: appConfig.deploymentUrl,
+				adminKey: appConfig.adminKey,
 			});
 			spinner.succeed("Function spec fetched successfully");
 		} catch (err: unknown) {
@@ -66,6 +70,12 @@ program
 
 		// Pretty-print the parsed spec
 		const parsed = parseFunctionSpec(rawSpec);
+		if (parsed.warnings?.length) {
+			console.log(chalk.yellow(`Warnings: ${parsed.warnings.length}`));
+			for (const warning of parsed.warnings.slice(0, 8)) {
+				console.log(chalk.yellow(`  - ${warning}`));
+			}
+		}
 		printParsedSpec(parsed);
 	});
 
@@ -76,15 +86,19 @@ program
 	.option(
 		"-p, --project-dir <path>",
 		"Path to your Convex project root",
-		process.cwd(),
 	)
 	.action(async (opts) => {
-		const projectDir = resolve(opts.projectDir);
+		const appConfig = resolveAppConfig({ projectDir: opts.projectDir });
+		const projectDir = appConfig.projectDir;
 		const spinner = ora("Fetching function spec...").start();
 
 		let rawSpec: FunctionSpecOutput;
 		try {
-			rawSpec = await fetchFunctionSpec({ projectDir });
+			rawSpec = await fetchFunctionSpec({
+				projectDir,
+				deploymentUrl: appConfig.deploymentUrl,
+				adminKey: appConfig.adminKey,
+			});
 			spinner.succeed("Function spec fetched");
 		} catch (err: unknown) {
 			spinner.fail("Failed to fetch function spec");
@@ -93,6 +107,9 @@ program
 		}
 
 		const parsed = parseFunctionSpec(rawSpec);
+		if (parsed.warnings?.length) {
+			console.log(chalk.yellow(`Parser warnings: ${parsed.warnings.length}`));
+		}
 		if (parsed.summary.total === 0) {
 			console.log(
 				chalk.yellow(
@@ -105,7 +122,9 @@ program
 		spinner.start("Generating docs...");
 		const outputDir = join(projectDir, "convex", "docs");
 		try {
-			await generateDocs(parsed, outputDir, projectDir);
+			await generateDocs(parsed, outputDir, projectDir, {
+				httpActionDeployUrl: appConfig.httpActionDeployUrl,
+			});
 			spinner.succeed(
 				`Docs written to ${outputDir}. Run \`convexdoc serve\` to view.`,
 			);
@@ -123,11 +142,16 @@ program
 	.option(
 		"-p, --project-dir <path>",
 		"Path to your Convex project root",
-		process.cwd(),
 	)
-	.option("-P, --port <number>", "Port to listen on", "3000")
+	.option("-P, --port <number>", "Port to listen on")
+	.option("--verbose-logs", "Enable detailed request logs")
 	.action(async (opts) => {
-		const projectDir = resolve(opts.projectDir);
+		const appConfig = resolveAppConfig({
+			projectDir: opts.projectDir,
+			serverPort: opts.port,
+			verboseLogs: opts.verboseLogs === true ? true : undefined,
+		});
+		const projectDir = appConfig.projectDir;
 		const docsDir = join(projectDir, "convex", "docs");
 
 		if (!existsSync(docsDir)) {
@@ -148,12 +172,16 @@ program
 			process.exit(1);
 		}
 
-		const port = String(opts.port);
+		const port = String(appConfig.serverPort);
 		const url = `http://localhost:${port}`;
 		console.log(chalk.green(`Serving docs at ${chalk.bold(url)}`));
 		console.log(chalk.dim("Press Ctrl+C to stop.\n"));
 
-		await serveDocsSite({ docsDir, port: Number(opts.port) });
+		await serveDocsSite({
+			docsDir,
+			port: appConfig.serverPort,
+			verboseLogs: appConfig.verboseLogs,
+		});
 	});
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -172,8 +200,8 @@ function printParsedSpec(parsed: ReturnType<typeof parseFunctionSpec>) {
 	console.log(`  ${chalk.white("Total")}      ${chalk.yellow(summary.total)}`);
 	console.log(
 		`  ${chalk.blue("Queries")}    ${chalk.yellow(summary.queries)}   ` +
-			`${chalk.green("Mutations")}  ${chalk.yellow(summary.mutations)}   ` +
-			`${chalk.magenta("Actions")}    ${chalk.yellow(summary.actions)}`,
+		`${chalk.green("Mutations")}  ${chalk.yellow(summary.mutations)}   ` +
+		`${chalk.magenta("Actions")}    ${chalk.yellow(summary.actions)}`,
 	);
 	if (summary.httpActions > 0) {
 		console.log(
@@ -182,7 +210,7 @@ function printParsedSpec(parsed: ReturnType<typeof parseFunctionSpec>) {
 	}
 	console.log(
 		`  ${chalk.gray("Public")}     ${chalk.yellow(summary.public)}   ` +
-			`${chalk.gray("Internal")}   ${chalk.yellow(summary.internal)}`,
+		`${chalk.gray("Internal")}   ${chalk.yellow(summary.internal)}`,
 	);
 
 	if (summary.total === 0) {

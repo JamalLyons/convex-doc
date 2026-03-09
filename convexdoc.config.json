@@ -1,0 +1,6 @@
+{
+	"projectDir": ".",
+	"serverPort": 3000,
+	"httpActionDeployUrl": "https://fine-raven-957.convex.site",
+	"verboseLogs": false
+}

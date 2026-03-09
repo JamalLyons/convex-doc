@@ -164,7 +164,10 @@ export async function extractJsDocs(
 						callee !== "query" &&
 						callee !== "mutation" &&
 						callee !== "action" &&
-						callee !== "httpAction"
+						callee !== "httpAction" &&
+						callee !== "internalQuery" &&
+						callee !== "internalMutation" &&
+						callee !== "internalAction"
 					) {
 						continue;
 					}

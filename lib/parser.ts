@@ -12,7 +12,10 @@ import type {
  */
 export function parseFunctionSpec(raw: unknown): ParsedFunctionSpec {
 	const output = validateRawOutput(raw);
-	const functions = output.functions.map(normalizeFunctionSpec);
+	const warnings: string[] = [];
+	const functions = output.functions.map((entry, index) =>
+		normalizeFunctionSpec(entry, index, warnings),
+	);
 
 	// Group by module (the part before the colon in "module:functionName")
 	const moduleMap = new Map<string, ConvexFunctionSpec[]>();
@@ -48,7 +51,7 @@ export function parseFunctionSpec(raw: unknown): ParsedFunctionSpec {
 		public: functions.filter((f) => f.visibility.kind === "public").length,
 	};
 
-	return { raw: functions, modules, byIdentifier, summary };
+	return { raw: functions, modules, byIdentifier, summary, warnings };
 }
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -62,6 +65,7 @@ export function parseFunctionSpec(raw: unknown): ParsedFunctionSpec {
  */
 export function getModuleName(identifier: string | undefined): string {
 	if (identifier == null || typeof identifier !== "string") return "(root)";
+	if (identifier.startsWith("unresolved:")) return "unresolved";
 	const colonIdx = identifier.lastIndexOf(":");
 	let mod = colonIdx === -1 ? "(root)" : identifier.slice(0, colonIdx);
 
@@ -140,11 +144,12 @@ type RawFunctionEntry = Record<string, unknown>;
 function normalizeFunctionSpec(
 	raw: RawFunctionEntry,
 	index: number,
+	warnings: string[],
 ): ConvexFunctionSpec {
-	const identifier =
-		(typeof raw.identifier === "string" && raw.identifier) ||
-		(typeof raw.name === "string" && raw.name) ||
-		`(unknown):${index}`;
+	const identifier = resolveIdentifier(raw, index);
+	if (identifier.startsWith("unresolved:")) {
+		warnings.push(`Unresolved function identifier at index ${index}`);
+	}
 
 	const rawType = raw.functionType ?? raw.udfType ?? raw.type ?? "query";
 	const functionType = normalizeFunctionType(String(rawType));
@@ -155,8 +160,12 @@ function normalizeFunctionSpec(
 			? { kind: (rawVis as { kind: string }).kind as "public" | "internal" }
 			: { kind: "public" as const };
 
-	const args = parseValidatorField(raw.args);
-	const returns = parseValidatorField(raw.returns);
+	const args = parseValidatorField(
+		raw.args ?? raw.argsValidator ?? raw.argument ?? raw.arguments,
+	);
+	const returns = parseValidatorField(
+		raw.returns ?? raw.returnValue ?? raw.returnValidator ?? raw.returnsValidator,
+	);
 
 	return {
 		identifier,
@@ -185,11 +194,13 @@ function parseValidatorField(value: unknown): ConvexFunctionSpec["args"] {
 
 function normalizeFunctionType(s: string): ConvexFunctionType {
 	const lower = s.toLowerCase();
+	if (lower === "httpaction" || lower === "http_action") {
+		return "httpAction";
+	}
 	if (
 		lower === "query" ||
 		lower === "mutation" ||
-		lower === "action" ||
-		lower === "httpaction"
+		lower === "action"
 	) {
 		return lower as ConvexFunctionType;
 	}
@@ -197,6 +208,22 @@ function normalizeFunctionType(s: string): ConvexFunctionType {
 		return s.toLowerCase() as ConvexFunctionType;
 	}
 	return "query";
+}
+
+function resolveIdentifier(raw: RawFunctionEntry, index: number): string {
+	const candidates = [
+		raw.identifier,
+		raw.name,
+		raw.path,
+		raw.udfPath,
+		raw.canonicalName,
+	];
+	for (const candidate of candidates) {
+		if (typeof candidate === "string" && candidate.trim()) {
+			return candidate;
+		}
+	}
+	return `unresolved:${index}`;
 }
 
 function validateRawOutput(raw: unknown): { functions: RawFunctionEntry[] } {

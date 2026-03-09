@@ -9,6 +9,7 @@
 	"scripts": {
 		"build": "tsc",
 		"dev": "tsx lib/main.ts",
+		"test": "tsx --test test/**/*.test.ts",
 		"lint": "biome check .",
 		"lint:fix": "biome check --write .",
 		"convex:dev": "pnpm dlx convex dev"

@@ -1,5 +1,5 @@
 import { readdirSync, readFileSync, statSync } from "node:fs";
-import { join, relative, sep } from "node:path";
+import { dirname, join, relative, sep } from "node:path";
 import ts from "typescript";
 import type { ParsedFunctionSpec } from "./function-spec.js";
 
@@ -94,6 +94,26 @@ export async function extractHttpRoutes(
 			true,
 			ts.ScriptKind.TS,
 		);
+		const localIdentifierMap = new Map<string, string>();
+		for (const stmt of sf.statements) {
+			if (!ts.isImportDeclaration(stmt)) continue;
+			if (!stmt.importClause || !stmt.moduleSpecifier) continue;
+			if (!ts.isStringLiteral(stmt.moduleSpecifier)) continue;
+			const source = stmt.moduleSpecifier.text;
+			if (!source.startsWith(".")) continue;
+			const fromModule = moduleNameFromConvexFile(
+				convexDir,
+				join(dirname(file), source).replace(/\\/g, "/"),
+			);
+
+			if (stmt.importClause.namedBindings && ts.isNamedImports(stmt.importClause.namedBindings)) {
+				for (const specifier of stmt.importClause.namedBindings.elements) {
+					const localName = specifier.name.text;
+					const importedName = specifier.propertyName?.text ?? localName;
+					localIdentifierMap.set(localName, `${fromModule}:${importedName}`);
+				}
+			}
+		}
 
 		const visit = (node: ts.Node) => {
 			if (
@@ -132,8 +152,14 @@ export async function extractHttpRoutes(
 							if (handlerExpr && ts.isIdentifier(handlerExpr)) {
 								const moduleName = moduleNameFromConvexFile(convexDir, file);
 								const candidate = `${moduleName}:${handlerExpr.text}`;
-								if (spec.byIdentifier.has(candidate))
+								if (spec.byIdentifier.has(candidate)) {
 									handlerIdentifier = candidate;
+								} else {
+									const imported = localIdentifierMap.get(handlerExpr.text);
+									if (imported && spec.byIdentifier.has(imported)) {
+										handlerIdentifier = imported;
+									}
+								}
 							}
 
 							routes.push({

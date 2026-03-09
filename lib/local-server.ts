@@ -40,15 +40,31 @@ async function readJsonBody(
 export async function serveDocsSite(opts: {
 	docsDir: string;
 	port: number;
+	verboseLogs?: boolean;
 }): Promise<void> {
-	const { docsDir, port } = opts;
+	const { docsDir, port, verboseLogs = false } = opts;
 
 	const server = createServer(async (req, res) => {
+		const reqStart = Date.now();
+		const requestId = Math.random().toString(36).slice(2, 8);
+		const reqMethod = req.method ?? "GET";
+		const reqPath = req.url ?? "/";
+		const log = (message: string) => {
+			if (!verboseLogs) return;
+			console.log(`[convexdoc:${requestId}] ${message}`);
+		};
+		const logEnd = (status: number) => {
+			const duration = Date.now() - reqStart;
+			console.log(
+				`[convexdoc] ${reqMethod} ${reqPath} -> ${status} (${duration}ms)`,
+			);
+		};
 		try {
 			if (!isLocalhostRequest(req.headers.host)) {
 				res.statusCode = 403;
 				res.setHeader("content-type", "text/plain; charset=utf-8");
 				res.end("Forbidden");
+				logEnd(403);
 				return;
 			}
 
@@ -72,6 +88,7 @@ export async function serveDocsSite(opts: {
 							errorMessage: "Invalid JSON body",
 						}),
 					);
+					logEnd(400);
 					return;
 				}
 
@@ -94,6 +111,7 @@ export async function serveDocsSite(opts: {
 							errorMessage: "Body must include { functionType, path }",
 						}),
 					);
+					logEnd(400);
 					return;
 				}
 
@@ -108,6 +126,7 @@ export async function serveDocsSite(opts: {
 								"CONVEX_URL is not set. Run from a configured Convex project or export CONVEX_URL.",
 						}),
 					);
+					logEnd(500);
 					return;
 				}
 
@@ -123,6 +142,7 @@ export async function serveDocsSite(opts: {
 				}
 
 				const t0 = Date.now();
+				log(`proxy -> ${endpoint}`);
 				const upstream = await fetch(endpoint, {
 					method: "POST",
 					headers,
@@ -138,6 +158,7 @@ export async function serveDocsSite(opts: {
 				);
 				res.setHeader("x-convexdoc-duration-ms", String(dtMs));
 				res.end(text);
+				logEnd(upstream.status);
 				return;
 			}
 
@@ -153,11 +174,13 @@ export async function serveDocsSite(opts: {
 							errorMessage: "Manifest not found",
 						}),
 					);
+					logEnd(404);
 					return;
 				}
 				res.statusCode = 200;
 				res.setHeader("content-type", "application/json; charset=utf-8");
 				createReadStream(manifestPath).pipe(res);
+				logEnd(200);
 				return;
 			}
 
@@ -185,6 +208,7 @@ export async function serveDocsSite(opts: {
 				res.statusCode = 404;
 				res.setHeader("content-type", "text/plain; charset=utf-8");
 				res.end("Not found");
+				logEnd(404);
 				return;
 			}
 
@@ -193,12 +217,14 @@ export async function serveDocsSite(opts: {
 				res.statusCode = 404;
 				res.setHeader("content-type", "text/plain; charset=utf-8");
 				res.end("Not found");
+				logEnd(404);
 				return;
 			}
 
 			res.statusCode = 200;
 			res.setHeader("content-type", contentTypeForPath(filePath));
 			createReadStream(filePath).pipe(res);
+			logEnd(200);
 		} catch (err: unknown) {
 			res.statusCode = 500;
 			res.setHeader("content-type", "application/json; charset=utf-8");
@@ -208,6 +234,7 @@ export async function serveDocsSite(opts: {
 					errorMessage: (err as Error).message ?? String(err),
 				}),
 			);
+			logEnd(500);
 		}
 	});
 

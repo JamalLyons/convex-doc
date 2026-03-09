@@ -170,4 +170,6 @@ export interface ParsedFunctionSpec {
 		internal: number;
 		public: number;
 	};
+	/** Parser warnings for unresolved/partial entries */
+	warnings?: string[];
 }

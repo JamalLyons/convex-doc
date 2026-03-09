@@ -1,0 +1,149 @@
+{
+  "url": "https://fine-raven-957.convex.cloud",
+  "functions": [
+    {
+      "functionType": "HttpAction",
+      "method": "GET",
+      "path": "/task"
+    },
+    {
+      "args": {
+        "type": "object",
+        "value": {
+          "done": {
+            "fieldType": {
+              "type": "boolean"
+            },
+            "optional": false
+          },
+          "title": {
+            "fieldType": {
+              "type": "string"
+            },
+            "optional": true
+          }
+        }
+      },
+      "functionType": "Mutation",
+      "identifier": "tasks.js:createTask",
+      "returns": {
+        "type": "any"
+      },
+      "visibility": {
+        "kind": "public"
+      }
+    },
+    {
+      "args": {
+        "type": "object",
+        "value": {
+          "id": {
+            "fieldType": {
+              "tableName": "tasks",
+              "type": "id"
+            },
+            "optional": false
+          }
+        }
+      },
+      "functionType": "Query",
+      "identifier": "tasks.js:getTask",
+      "returns": {
+        "type": "any"
+      },
+      "visibility": {
+        "kind": "public"
+      }
+    },
+    {
+      "args": {
+        "type": "object",
+        "value": {
+          "command": {
+            "fieldType": {
+              "type": "string"
+            },
+            "optional": false
+          }
+        }
+      },
+      "functionType": "Action",
+      "identifier": "tasks.js:helperInternalAction",
+      "returns": {
+        "type": "any"
+      },
+      "visibility": {
+        "kind": "internal"
+      }
+    },
+    {
+      "args": {
+        "type": "object",
+        "value": {
+          "count": {
+            "fieldType": {
+              "type": "number"
+            },
+            "optional": false
+          }
+        }
+      },
+      "functionType": "Mutation",
+      "identifier": "tasks.js:helperInternalMutation",
+      "returns": {
+        "type": "any"
+      },
+      "visibility": {
+        "kind": "internal"
+      }
+    },
+    {
+      "args": {
+        "type": "object",
+        "value": {
+          "info": {
+            "fieldType": {
+              "type": "string"
+            },
+            "optional": false
+          }
+        }
+      },
+      "functionType": "Query",
+      "identifier": "tasks.js:helperInternalQuery",
+      "returns": {
+        "type": "any"
+      },
+      "visibility": {
+        "kind": "internal"
+      }
+    },
+    {
+      "args": {
+        "type": "object",
+        "value": {
+          "delayMs": {
+            "fieldType": {
+              "type": "number"
+            },
+            "optional": true
+          },
+          "taskId": {
+            "fieldType": {
+              "type": "string"
+            },
+            "optional": false
+          }
+        }
+      },
+      "functionType": "Action",
+      "identifier": "tasks.js:runTask",
+      "returns": {
+        "type": "any"
+      },
+      "visibility": {
+        "kind": "public"
+      }
+    }
+  ]
+}

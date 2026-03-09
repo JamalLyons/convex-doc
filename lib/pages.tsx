@@ -146,6 +146,15 @@ function Layout({
 							>
 								Convex docs
 							</a>
+							
+							<button
+								type="button"
+								id="theme-toggle"
+								className="ml-2 inline-flex items-center justify-center rounded-lg bg-white/5 p-2 text-sm text-slate-300 ring-1 ring-white/10 hover:bg-white/7.5 hover:text-white"
+								aria-label="Toggle light/dark mode"
+							>
+								🌙
+							</button>
 						</div>
 					</div>
 				</header>
@@ -200,7 +209,7 @@ function Layout({
 							</div>
 						</aside>
 
-						<main className="min-w-0">{children}</main>
+						<main className="min-w-0 animate-fade-in-up">{children}</main>
 					</div>
 				</div>
 
@@ -229,7 +238,7 @@ function Layout({
 
 				<dialog
 					id="convexdoc-search"
-					className="backdrop:bg-black/70 bg-transparent p-0"
+					className="backdrop:bg-black/70 backdrop:backdrop-blur-sm bg-transparent p-0"
 				>
 					<div className="mx-auto mt-24 w-[min(720px,calc(100vw-2rem))] rounded-2xl bg-slate-950 ring-1 ring-white/15 shadow-[0_30px_90px_rgba(0,0,0,0.7)] overflow-hidden">
 						<div className="border-b border-white/10 p-3">
@@ -399,7 +408,7 @@ export function ModulePage({
 								<li
 									key={fn.identifier}
 									id={`fn-${fn.identifier.replace(/:/g, "-")}`}
-									className={`rounded-2xl phoenix-glass p-5 border-l-4 ${functionBorderColor(fn.functionType)} hover:shadow-[0_0_0_1px_var(--phoenix-red-zone-glow)] transition-shadow`}
+									className={`rounded-2xl phoenix-glass p-5 border-l-4 ${functionBorderColor(fn.functionType)} hover:shadow-[0_0_0_1px_var(--phoenix-red-zone-glow)] hover:-translate-y-0.5 hover:scale-[1.01] transition-all duration-300 scroll-mt-32`}
 									data-convexdoc-fn={fn.identifier}
 									data-convexdoc-fn-type={fn.functionType}
 								>
@@ -489,8 +498,27 @@ export function ModulePage({
 					</ul>
 				</div>
 
-				<aside className="hidden xl:block">
-					<div className="sticky top-24">
+				<aside className="hidden xl:block mt-8">
+					<div className="sticky top-24 space-y-6">
+						<div className="rounded-2xl phoenix-glass overflow-hidden">
+							<div className="px-4 py-3 border-b border-white/10">
+								<div className="text-xs font-semibold uppercase tracking-wide" style={{ color: "var(--phoenix-text)" }}>
+									Functions in this module
+								</div>
+							</div>
+							<div className="max-h-[30vh] overflow-auto p-2">
+								<ul className="space-y-1">
+									{module.functions.map(fn => (
+										<li key={fn.identifier}>
+											<a href={`#fn-${fn.identifier.replace(/:/g, "-")}`} data-toc-id={`fn-${fn.identifier.replace(/:/g, "-")}`} className="block rounded-lg px-3 py-1.5 text-xs text-slate-400 hover:text-white transition-colors truncate">
+												{fn.identifier}
+											</a>
+										</li>
+									))}
+								</ul>
+							</div>
+						</div>
+
 						<div
 							id="convexdoc-runner-panel"
 							className="rounded-2xl phoenix-glass overflow-hidden"
@@ -531,7 +559,7 @@ export function ModulePage({
 
 			<dialog
 				id="convexdoc-runner-help"
-				className="backdrop:bg-black/70 bg-transparent p-0"
+				className="backdrop:bg-black/70 backdrop:backdrop-blur-sm bg-transparent p-0"
 			>
 				<div className="mx-auto mt-24 w-[min(720px,calc(100vw-2rem))] rounded-2xl bg-slate-950 ring-1 ring-white/15 shadow-[0_30px_90px_rgba(0,0,0,0.7)] overflow-hidden">
 					<div className="border-b border-white/10 px-4 py-3 flex items-center justify-between">
