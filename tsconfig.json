@@ -10,9 +10,7 @@
 		"skipLibCheck": true,
 		"declaration": true,
 		"declarationMap": true,
-		"sourceMap": true,
-		"jsx": "react-jsx",
-		"jsxImportSource": "jsx-async-runtime"
+		"sourceMap": true
 	},
 	"include": ["lib/**/*"],
 	"exclude": ["node_modules", "dist"]

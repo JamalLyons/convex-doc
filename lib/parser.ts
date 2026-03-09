@@ -2,7 +2,6 @@ import type {
 	ConvexFunctionSpec,
 	ConvexFunctionType,
 	ConvexModule,
-	ConvexValidator,
 	ParsedFunctionSpec,
 } from "./function-spec.js";
 
@@ -75,48 +74,6 @@ export function getFunctionName(identifier: string | undefined): string {
 	return colonIdx === -1 ? identifier : identifier.slice(colonIdx + 1);
 }
 
-/**
- * Compact single-line representation of a Convex validator for CLI or HTML display.
- */
-export function formatValidator(v: ConvexValidator, depth = 0): string {
-	const type = v.type;
-	switch (type) {
-		case "object": {
-			if (depth > 1) return "{ ... }";
-			const fields =
-				(
-					v as {
-						fields?: Record<
-							string,
-							{ fieldType: ConvexValidator; optional: boolean }
-						>;
-					}
-				).fields ?? {};
-			const fieldStrs = Object.entries(fields).map(([k, f]) => {
-				const opt = f.optional ? "?" : "";
-				return `${k}${opt}: ${formatValidator(f.fieldType, depth + 1)}`;
-			});
-			return fieldStrs.length ? `{ ${fieldStrs.join(", ")} }` : "{}";
-		}
-		case "array":
-			return `${formatValidator((v as { items: ConvexValidator }).items, depth)}[]`;
-		case "union":
-			return ((v as { members: ConvexValidator[] }).members ?? [])
-				.map((m) => formatValidator(m, depth))
-				.join(" | ");
-		case "literal":
-			return JSON.stringify((v as { value: unknown }).value);
-		case "id":
-			return `Id<"${(v as { tableName: string }).tableName}">`;
-		case "null":
-			return "null";
-		case "any":
-			return "any";
-		default:
-			return type ?? "unknown";
-	}
-}
-
 function count(fns: ConvexFunctionSpec[], type: ConvexFunctionType): number {
 	return fns.filter((f) => f.functionType === type).length;
 }
@@ -133,7 +90,8 @@ function normalizeFunctionSpec(
 		(typeof raw.name === "string" && raw.name) ||
 		`(unknown):${index}`;
 
-	const rawType = raw.functionType ?? raw.udfType ?? raw.type ?? "query";
+	const rawType =
+		raw.functionType ?? raw.udfType ?? raw.type ?? "query";
 	const functionType = normalizeFunctionType(String(rawType));
 
 	const rawVis = raw.visibility;
@@ -154,7 +112,9 @@ function normalizeFunctionSpec(
 	};
 }
 
-function parseValidatorField(value: unknown): ConvexFunctionSpec["args"] {
+function parseValidatorField(
+	value: unknown,
+): ConvexFunctionSpec["args"] {
 	if (value == null) return null;
 	if (typeof value === "object") return value as ConvexFunctionSpec["args"];
 	if (typeof value === "string") {
@@ -203,7 +163,7 @@ function validateRawOutput(raw: unknown): { functions: RawFunctionEntry[] } {
 	if (!Array.isArray(obj.functions)) {
 		throw new Error(
 			'Expected function-spec JSON to have a "functions" array. ' +
-			"Run `npx convex function-spec` and check the output format.",
+				"Run `npx convex function-spec` and check the output format.",
 		);
 	}
 

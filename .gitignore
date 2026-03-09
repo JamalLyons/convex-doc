@@ -4,6 +4,3 @@
 /logs
 
 .env.local
-
-# Generated ConvexDoc output (optional; remove to commit docs)
-/convex/docs/
