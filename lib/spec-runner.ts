@@ -49,11 +49,11 @@ export async function fetchFunctionSpec(
 		const hint = execaErr.stderr ?? execaErr.message ?? String(err);
 		throw new Error(
 			`Failed to run \`npx convex function-spec\`.\n\n` +
-				`Make sure:\n` +
-				`  • You're in (or pointing --project-dir at) a Convex project\n` +
-				`  • You're logged in: npx convex login\n` +
-				`  • convex@1.15+ is installed\n\n` +
-				`Original error:\n${hint}`,
+			`Make sure:\n` +
+			`  • You're in (or pointing --project-dir at) a Convex project\n` +
+			`  • You're logged in: npx convex login\n` +
+			`  • convex@1.15+ is installed\n\n` +
+			`Original error:\n${hint}`,
 		);
 	}
 
@@ -99,8 +99,8 @@ function ensureConvexProject(dir: string): void {
 	if (!hasConvexDir && !hasEnvFile) {
 		throw new Error(
 			`No Convex project found at: ${dir}\n` +
-				`Expected a \`convex/\` directory. ` +
-				`Use --project-dir to point at your Convex project root.`,
+			`Expected a \`convex/\` directory. ` +
+			`Use --project-dir to point at your Convex project root.`,
 		);
 	}
 }

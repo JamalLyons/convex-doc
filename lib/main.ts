@@ -1,11 +1,17 @@
 #!/usr/bin/env node
-import { writeFileSync } from "node:fs";
-import { resolve } from "node:path";
+import { existsSync, writeFileSync } from "node:fs";
+import { join, resolve } from "node:path";
+import { execa } from "execa";
 import chalk from "chalk";
 import { Command } from "commander";
 import ora from "ora";
-import type { ConvexValidator, FunctionSpecOutput } from "./function-spec.js";
-import { getFunctionName, parseFunctionSpec } from "./parser.js";
+import type { FunctionSpecOutput } from "./function-spec.js";
+import { generateDocs } from "./generate.js";
+import {
+  formatValidator,
+  getFunctionName,
+  parseFunctionSpec,
+} from "./parser.js";
 import { fetchFunctionSpec } from "./spec-runner.js";
 
 const program = new Command();
@@ -62,6 +68,94 @@ program
     printParsedSpec(parsed);
   });
 
+// ─── `generate` command ──────────────────────────────────────────────────────
+program
+  .command("generate")
+  .description("Generate static HTML documentation into convex/docs")
+  .option(
+    "-p, --project-dir <path>",
+    "Path to your Convex project root",
+    process.cwd(),
+  )
+  .action(async (opts) => {
+    const projectDir = resolve(opts.projectDir);
+    const spinner = ora("Fetching function spec...").start();
+
+    let rawSpec: FunctionSpecOutput;
+    try {
+      rawSpec = await fetchFunctionSpec({ projectDir });
+      spinner.succeed("Function spec fetched");
+    } catch (err: unknown) {
+      spinner.fail("Failed to fetch function spec");
+      console.error(chalk.red((err as Error).message));
+      process.exit(1);
+    }
+
+    const parsed = parseFunctionSpec(rawSpec);
+    if (parsed.summary.total === 0) {
+      console.log(
+        chalk.yellow(
+          "No functions found. Push your Convex functions first (e.g. npx convex dev), then run generate again.",
+        ),
+      );
+      process.exit(0);
+    }
+
+    spinner.start("Generating docs...");
+    const outputDir = join(projectDir, "convex", "docs");
+    try {
+      await generateDocs(parsed, outputDir);
+      spinner.succeed(`Docs written to ${outputDir}`);
+    } catch (err: unknown) {
+      spinner.fail("Generate failed");
+      console.error(chalk.red((err as Error).message));
+      process.exit(1);
+    }
+  });
+
+// ─── `serve` command ──────────────────────────────────────────────────────────
+program
+  .command("serve")
+  .description("Serve the generated docs site locally")
+  .option(
+    "-p, --project-dir <path>",
+    "Path to your Convex project root",
+    process.cwd(),
+  )
+  .option("-P, --port <number>", "Port to listen on", "3000")
+  .action(async (opts) => {
+    const projectDir = resolve(opts.projectDir);
+    const docsDir = join(projectDir, "convex", "docs");
+
+    if (!existsSync(docsDir)) {
+      console.error(
+        chalk.red(
+          `No docs folder at ${docsDir}. Run \`convexdoc generate\` first.`,
+        ),
+      );
+      process.exit(1);
+    }
+
+    if (!existsSync(join(docsDir, "index.html"))) {
+      console.error(
+        chalk.red(
+          `No index.html in ${docsDir}. Run \`convexdoc generate\` first.`,
+        ),
+      );
+      process.exit(1);
+    }
+
+    const port = String(opts.port);
+    const url = `http://localhost:${port}`;
+    console.log(chalk.green(`Serving docs at ${chalk.bold(url)}`));
+    console.log(chalk.dim("Press Ctrl+C to stop.\n"));
+
+    await execa("npx", ["--yes", "serve", docsDir, "-l", port], {
+      cwd: projectDir,
+      stdio: "inherit",
+    });
+  });
+
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function printParsedSpec(parsed: ReturnType<typeof parseFunctionSpec>) {
@@ -98,7 +192,9 @@ function printParsedSpec(parsed: ReturnType<typeof parseFunctionSpec>) {
         "No functions found on this deployment. Push your Convex functions first:",
       ),
     );
-    console.log(chalk.dim("  npx convex dev   (dev) or  npx convex deploy  (prod)"));
+    console.log(
+      chalk.dim("  npx convex dev   (dev) or  npx convex deploy  (prod)"),
+    );
     console.log(
       chalk.dim(
         "  Run from your project root (or use --project-dir). Then run convexdoc spec again.",
@@ -158,41 +254,6 @@ function fnTypeLabel(type: string): string {
       return chalk.cyan("H");
     default:
       return chalk.gray("?");
-  }
-}
-
-/**
- * Compact single-line representation of a Convex validator for CLI display.
- */
-function formatValidator(v: ConvexValidator, depth = 0): string {
-  const type = v.type;
-
-  switch (type) {
-    case "object": {
-      if (depth > 1) return "{ ... }";
-      const fields = v.fields ?? {};
-      const fieldStrs = Object.entries(fields).map(([k, f]) => {
-        const opt = f.optional ? "?" : "";
-        return `${k}${opt}: ${formatValidator(f.fieldType, depth + 1)}`;
-      });
-      return fieldStrs.length ? `{ ${fieldStrs.join(", ")} }` : "{}";
-    }
-    case "array":
-      return `${formatValidator(v.items, depth)}[]`;
-    case "union":
-      return (v.members ?? [])
-        .map((m) => formatValidator(m, depth))
-        .join(" | ");
-    case "literal":
-      return JSON.stringify(v.value);
-    case "id":
-      return `Id<"${v.tableName}">`;
-    case "null":
-      return "null";
-    case "any":
-      return "any";
-    default:
-      return type ?? "unknown";
   }
 }
 

@@ -2,5 +2,5 @@
 /dist
 /coverage
 /logs
-
+/convex/docs
 .env.local
