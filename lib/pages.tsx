@@ -820,13 +820,7 @@ export function ModulePage({
 					customization?.modules?.[module.name]?.description;
 				return moduleDescription ? (
 					<p className="mb-6 text-xs text-slate-400">{moduleDescription}</p>
-				) : (
-					<p className="mb-6 text-xs text-slate-400">
-						Interactive tools require JavaScript and are fully enabled when
-						served via{" "}
-						<code className="font-mono text-slate-200">convexdoc serve</code>.
-					</p>
-				);
+				) : null;
 			})()}
 
 			<div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_380px] gap-6">

@@ -181,9 +181,7 @@ export async function serveDocsSite(opts: {
 				const headers: Record<string, string> = {
 					"content-type": "application/json",
 				};
-				const tokenFromConfig =
-					authToken ??
-					process.env.CONVEXDOC_AUTH_TOKEN;
+				const tokenFromConfig = authToken ?? process.env.CONVEXDOC_AUTH_TOKEN;
 				if (body.bearerToken) {
 					headers.authorization = `Bearer ${body.bearerToken}`;
 				} else if (tokenFromConfig) {
@@ -293,5 +291,5 @@ export async function serveDocsSite(opts: {
 	});
 
 	// Keep process alive
-	await new Promise<void>(() => { });
+	await new Promise<void>(() => {});
 }

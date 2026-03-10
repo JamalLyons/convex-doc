@@ -1,5 +1,6 @@
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { isAbsolute, join, resolve } from "node:path";
+import { config as loadEnv } from "dotenv";
 
 export interface ConvexDocFunctionCustomization {
 	description?: string;
@@ -99,6 +100,11 @@ export function resolveAppConfig(
 	options: ResolveAppConfigOptions = {},
 ): ResolvedAppConfig {
 	const cwd = resolve(options.cwd ?? process.cwd());
+	// Load .env.local and .env from the working directory so Convex-style
+	// environment variables (e.g. NEXT_PUBLIC_CONVEX_URL, CONVEX_SITE_URL)
+	// are available for defaults.
+	loadEnv({ path: join(cwd, ".env.local"), override: false });
+	loadEnv({ path: join(cwd, ".env"), override: false });
 	const fileConfig = loadConfigFile(cwd);
 
 	const projectDirRaw =
@@ -150,11 +156,13 @@ export function resolveAppConfig(
 			options.httpActionDeployUrl ??
 			process.env.CONVEXDOC_HTTP_ACTION_DEPLOY_URL ??
 			fileConfig.data.httpActionDeployUrl ??
+			process.env.CONVEX_SITE_URL ??
 			DEFAULT_HTTP_ACTION_DEPLOY_URL,
-		deploymentUrl: fileConfig.data.deploymentUrl ?? process.env.CONVEX_URL,
-		authToken:
-			fileConfig.data.authToken ??
-			process.env.CONVEXDOC_AUTH_TOKEN,
+		deploymentUrl:
+			fileConfig.data.deploymentUrl ??
+			process.env.CONVEX_URL ??
+			process.env.NEXT_PUBLIC_CONVEX_URL,
+		authToken: fileConfig.data.authToken ?? process.env.CONVEXDOC_AUTH_TOKEN,
 		verboseLogs,
 		disableFunctionRunner,
 		deploymentEnv,
@@ -174,9 +182,7 @@ function loadConfigFile(cwd: string): {
 			projectDir: ".",
 			serverPort: DEFAULT_SERVER_PORT,
 			docsDir: DEFAULT_DOCS_DIR,
-			deploymentUrl: "",
 			authToken: "",
-			httpActionDeployUrl: DEFAULT_HTTP_ACTION_DEPLOY_URL,
 			verboseLogs: false,
 			disableFunctionRunner: false,
 			deploymentEnv: "dev",

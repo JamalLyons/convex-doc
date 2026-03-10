@@ -159,6 +159,7 @@ Place a `convexdoc.config.json` file in the directory where you run `convexdoc`:
   "docsDir": "docs",
 
   // Base URL for Convex HTTP actions when running locally
+  // This is required if using HTTP actions in your Convex functions.
   "httpActionDeployUrl": "https://<your-deployment>.convex.site",
 
   // Optional: override deployment URL when fetching the function spec
@@ -224,7 +225,9 @@ The following environment variables can override or supplement config:
 - `CONVEXDOC_VERBOSE_LOGS` – `"true"` / `"false"` style toggle for verbose logs
 - `CONVEXDOC_DISABLE_FUNCTION_RUNNER` – `"true"` to disable the function runner
 - `CONVEXDOC_ENV` – `"dev"` or `"prod"` deployment environment
-- `CONVEX_URL` – Deployment URL (used when `deploymentUrl` is not provided)
+- `CONVEX_URL` – Deployment URL (used when `deploymentUrl` is not provided).
+- `CONVEX_DEPLOYMENT` – Convex deployment identifier (e.g. `dev:my-deployment`); used by the Convex CLI itself when ConvexDoc fetches the function spec.
+- `CONVEX_SITE_URL` – Site URL (used as the default `httpActionDeployUrl` when not set in config).
 - `CONVEXDOC_AUTH_TOKEN` – Default auth token used by ConvexDoc when running functions (sent as a Bearer token).
 
 Boolean strings like `"true"`, `"1"`, `"yes"` are treated as `true`, and
