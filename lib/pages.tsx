@@ -4,7 +4,11 @@
  */
 
 import { Fragment, type ReactNode } from "react";
-import type { ConvexModule, ParsedFunctionSpec } from "./function-spec.js";
+import type {
+	ConvexFunctionType,
+	ConvexModule,
+	ParsedFunctionSpec,
+} from "./function-spec.js";
 
 export interface PageProps {
 	title: string;
@@ -49,7 +53,7 @@ export interface ModulePageProps extends PageProps {
 	module: ConvexModule;
 }
 
-function functionTypeBadge(type: string): string {
+function functionTypeBadge(type: ConvexFunctionType): string {
 	switch (type) {
 		case "query":
 			return "bg-sky-500/10 text-sky-400 ring-1 ring-inset ring-zinc-400/30";
@@ -64,7 +68,7 @@ function functionTypeBadge(type: string): string {
 	}
 }
 
-function functionBorderColor(type: string): string {
+function functionBorderColor(type: ConvexFunctionType): string {
 	switch (type) {
 		case "query":
 			return "border-l-sky-400";
@@ -80,7 +84,7 @@ function functionBorderColor(type: string): string {
 }
 
 function docsLinkForFunctionType(
-	type: string,
+	type: ConvexFunctionType,
 ): { href: string; label: string } | null {
 	switch (type) {
 		case "query":
