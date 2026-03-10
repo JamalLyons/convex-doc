@@ -107,6 +107,10 @@ export function resolveAppConfig(
 		fileConfig.data.projectDir ??
 		cwd;
 
+	const projectDirResolved = isAbsolute(projectDirRaw)
+		? projectDirRaw
+		: resolve(cwd, projectDirRaw);
+
 	const portRaw =
 		options.serverPort ??
 		process.env.CONVEXDOC_SERVER_PORT ??
@@ -137,11 +141,11 @@ export function resolveAppConfig(
 	const docsDirRaw = fileConfig.data.docsDir ?? DEFAULT_DOCS_DIR;
 
 	return {
-		projectDir: resolve(projectDirRaw),
+		projectDir: projectDirResolved,
 		serverPort: parsePort(portRaw, DEFAULT_SERVER_PORT),
 		docsDir: isAbsolute(docsDirRaw)
 			? docsDirRaw
-			: resolve(projectDirRaw, docsDirRaw),
+			: resolve(projectDirResolved, docsDirRaw),
 		httpActionDeployUrl:
 			options.httpActionDeployUrl ??
 			process.env.CONVEXDOC_HTTP_ACTION_DEPLOY_URL ??

@@ -21,7 +21,6 @@ import { marked } from "marked";
 import { renderToStaticMarkup } from "react-dom/server";
 import type { ConvexDocCustomization } from "./config.js";
 import type {
-	ConvexFunctionSpec,
 	ParsedFunctionSpec,
 } from "./function-spec.js";
 import { extractHttpRoutes } from "./http-routes.js";
@@ -29,7 +28,6 @@ import { extractJsDocs } from "./jsdoc.js";
 import { IndexPage, ModulePage } from "./pages.js";
 import {
 	filterSpecByFunctionTypes,
-	formatValidator,
 	getFunctionName,
 	getModuleName,
 } from "./parser.js";
@@ -205,18 +203,6 @@ export function buildModuleSlugs(
 		map.set(mod.name, moduleToSlug(mod.name));
 	}
 	return map;
-}
-
-function formatArgs(fn: ConvexFunctionSpec): string {
-	if (!fn.args) return "// no arguments required";
-	const fmt = formatValidator(fn.args);
-	return fmt === "{}" ? "{ }  // empty object" : fmt;
-}
-
-function formatReturns(fn: ConvexFunctionSpec): string {
-	if (!fn.returns) return "// no return validator";
-	const fmt = formatValidator(fn.returns);
-	return fmt === "{}" ? "{ }  // empty object" : fmt;
 }
 
 function buildAccentCss(
@@ -464,8 +450,6 @@ export async function generateDocs(
 			renderToStaticMarkup(
 				<ModulePage
 					module={mod}
-					formatArgs={formatArgs}
-					formatReturns={formatReturns}
 					title={mod.name}
 					baseHref={baseHref}
 					nav={{ spec: filteredSpec, moduleSlugs, activeModuleName: mod.name }}

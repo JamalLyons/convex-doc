@@ -78,8 +78,16 @@ function prettyJson(v: unknown): string {
 	}
 }
 
-function formatValidator(value: unknown, depth = 0): string {
-	if (!value || typeof value !== "object") return "unknown";
+function formatJsonText(value: string): string | null {
+	try {
+		return prettyJson(JSON.parse(value));
+	} catch {
+		return null;
+	}
+}
+
+function sampleFromValidator(value: unknown): unknown {
+	if (!value || typeof value !== "object") return null;
 	const validator = value as Record<string, unknown>;
 	const type = String(validator.type ?? "unknown");
 	if (type === "object") {
@@ -87,29 +95,35 @@ function formatValidator(value: unknown, depth = 0): string {
 			(validator.fields as Record<string, unknown> | undefined) ??
 			(validator.value as Record<string, unknown> | undefined) ??
 			{};
-		const fields = Object.entries(rawFields).map(([key, rawField]) => {
+		const next: Record<string, unknown> = {};
+		for (const [key, rawField] of Object.entries(rawFields)) {
 			const field = rawField as Record<string, unknown>;
-			const optional = field.optional ? "?" : "";
-			return `${key}${optional}: ${formatValidator(field.fieldType, depth + 1)}`;
-		});
-		if (depth > 1) return "{ ... }";
-		return fields.length ? `{ ${fields.join(", ")} }` : "{}";
+			next[key] = sampleFromValidator(field.fieldType);
+		}
+		return next;
 	}
-	if (type === "array") {
-		const items = validator.items ?? validator.value;
-		return `${formatValidator(items, depth)}[]`;
-	}
+	if (type === "array" || type === "set") return [];
+	if (type === "map" || type === "record") return {};
 	if (type === "union") {
 		const members = Array.isArray(validator.members)
 			? validator.members
 			: Array.isArray(validator.value)
 				? validator.value
 				: [];
-		return members.map((m) => formatValidator(m, depth)).join(" | ");
+		return members.length ? sampleFromValidator(members[0]) : null;
 	}
-	if (type === "id") return `Id<"${String(validator.tableName ?? "")}">`;
-	if (type === "literal") return JSON.stringify(validator.value);
-	return type;
+	if (type === "id" || type === "string" || type === "bytes") return "";
+	if (
+		type === "number" ||
+		type === "float64" ||
+		type === "bigint" ||
+		type === "int64"
+	) {
+		return 0;
+	}
+	if (type === "boolean") return false;
+	if (type === "literal") return validator.value ?? null;
+	return null;
 }
 
 async function runFunction(
@@ -292,9 +306,10 @@ function RunnerPanel({
 
 	useEffect(() => {
 		const next = fn
-			? (localStorage.getItem(`convexdoc:args:${fn.identifier}`) ?? "{}")
-			: "{}";
-		setJsonArgs(next);
+			? localStorage.getItem(`convexdoc:args:${fn.identifier}`)
+			: null;
+		const fallbackArgs = fn ? prettyJson(sampleFromValidator(fn.args)) : "{}";
+		setJsonArgs(next ?? fallbackArgs);
 		const nextHeaders = fn
 			? (localStorage.getItem(`convexdoc:headers:${fn.identifier}`) ?? "{}")
 			: "{}";
@@ -349,6 +364,7 @@ function RunnerPanel({
 			args = jsonArgs.trim()
 				? (JSON.parse(jsonArgs) as Record<string, unknown>)
 				: {};
+			setJsonArgs(prettyJson(args));
 		} catch (err) {
 			setResponse((err as Error).message);
 			setStatusLine("Invalid args");
@@ -397,8 +413,7 @@ function RunnerPanel({
 				: (result.json.errorMessage ?? result.json.message ?? result.json);
 			setResponse(prettyJson(value));
 			setStatusLine(
-				`${ok ? "Success" : "Error"} • HTTP ${result.httpStatus}${
-					result.durationMs ? ` • ${result.durationMs}ms` : ""
+				`${ok ? "Success" : "Error"} • HTTP ${result.httpStatus}${result.durationMs ? ` • ${result.durationMs}ms` : ""
 				}`,
 			);
 		} catch (err) {
@@ -453,7 +468,7 @@ function RunnerPanel({
 				</div>
 				<div>
 					<div className="block text-[11px] mb-1.5 text-[var(--phoenix-text-muted)]">
-						Admin Key / Auth Token (optional)
+						Auth Token (optional)
 					</div>
 					<input
 						className="convexdoc-input w-full rounded-xl px-3 py-2 text-xs font-mono"
@@ -484,6 +499,10 @@ function RunnerPanel({
 					className="convexdoc-input w-full h-36 rounded-xl px-3 py-2 text-xs font-mono"
 					value={jsonArgs}
 					onChange={(e) => setJsonArgs(e.currentTarget.value)}
+					onBlur={() => {
+						const formatted = formatJsonText(jsonArgs);
+						if (formatted != null) setJsonArgs(formatted);
+					}}
 				/>
 				<div className="pt-1">
 					<button
@@ -504,26 +523,6 @@ function RunnerPanel({
 				<pre className="mt-2 text-[11px] leading-5 whitespace-pre-wrap text-[var(--phoenix-text)] overflow-auto">
 					{response}
 				</pre>
-			</div>
-			<div className="rounded-xl p-3 bg-[var(--phoenix-app-surface)] ring-1 ring-[var(--phoenix-border)] grid grid-cols-1 md:grid-cols-2 gap-3">
-				<div>
-					<div className="text-[11px] uppercase tracking-wide text-[var(--phoenix-text-muted)]">
-						args
-					</div>
-					<div className="mt-2 text-xs font-mono text-[var(--phoenix-text-dim)] break-words">
-						{fn.args ? formatValidator(fn.args) : "// no arguments required"}
-					</div>
-				</div>
-				<div>
-					<div className="text-[11px] uppercase tracking-wide text-[var(--phoenix-text-muted)]">
-						returns
-					</div>
-					<div className="mt-2 text-xs font-mono text-[var(--phoenix-text-dim)] break-words">
-						{fn.returns
-							? formatValidator(fn.returns)
-							: "// no return validator"}
-					</div>
-				</div>
 			</div>
 		</div>
 	);

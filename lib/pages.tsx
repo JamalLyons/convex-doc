@@ -3,9 +3,8 @@
  * Uses jsx-async-runtime; attributes are HTML-style (class, not className).
  */
 
-import type { ReactNode } from "react";
+import { Fragment, type ReactNode } from "react";
 import type {
-	ConvexFunctionSpec,
 	ConvexModule,
 	ParsedFunctionSpec,
 } from "./function-spec.js";
@@ -51,9 +50,6 @@ export interface IndexPageProps extends PageProps {
 
 export interface ModulePageProps extends PageProps {
 	module: ConvexModule;
-	/** Pre-formatted validator strings for args/returns */
-	formatArgs: (fn: ConvexFunctionSpec) => string;
-	formatReturns: (fn: ConvexFunctionSpec) => string;
 }
 
 function functionTypeBadge(type: string): string {
@@ -120,6 +116,255 @@ function moduleDisplayName(name: string): string {
 	if (name === "(root)") return "root";
 	if (name === "unresolved") return "unresolved";
 	return name;
+}
+
+const TOKENS = {
+	keyword: { color: "var(--phoenix-text-muted)" },
+	punctuation: { color: "var(--phoenix-zinc-500)" },
+	field: { color: "var(--phoenix-text)" },
+	optional: { color: "var(--phoenix-red-zone)" },
+	idType: { color: "var(--phoenix-red-zone)" },
+	stringLiteral: { color: "var(--phoenix-success)" },
+	comment: { color: "var(--phoenix-text-dim)" },
+} as const;
+
+function indent(depth: number): string {
+	return "  ".repeat(depth);
+}
+
+function asValidatorObject(
+	validator: unknown,
+): Record<string, unknown> | null {
+	if (!validator || typeof validator !== "object") return null;
+	return validator as Record<string, unknown>;
+}
+
+function validatorType(validator: unknown): string | null {
+	const obj = asValidatorObject(validator);
+	if (!obj) return null;
+	return typeof obj.type === "string" ? obj.type : null;
+}
+
+function isObjectValidator(validator: unknown): boolean {
+	return validatorType(validator) === "object";
+}
+
+function renderLiteral(value: unknown): ReactNode {
+	if (typeof value === "string") {
+		return (
+			<span style={TOKENS.stringLiteral}>
+				"
+				{value}
+				"
+			</span>
+		);
+	}
+	if (typeof value === "bigint") return String(value);
+	if (typeof value === "number" || typeof value === "boolean") return String(value);
+	if (value == null) {
+		return <span style={TOKENS.keyword}>null</span>;
+	}
+	return JSON.stringify(value);
+}
+
+function renderObjectFields(
+	validator: Record<string, unknown>,
+	depth: number,
+): ReactNode {
+	const rawFields =
+		(validator.fields as Record<string, unknown> | undefined) ??
+		(validator.value as Record<string, unknown> | undefined) ??
+		{};
+	const entries = Object.entries(rawFields);
+	if (!entries.length) {
+		return (
+			<>
+				<span style={TOKENS.punctuation}>{"{"}</span>
+				<span style={TOKENS.punctuation}>{"}"}</span>
+			</>
+		);
+	}
+	return (
+		<>
+			<span style={TOKENS.punctuation}>{"{"}</span>
+			{entries.map(([fieldName, rawField], index) => {
+				const field = (rawField as Record<string, unknown>) ?? {};
+				const optional = field.optional === true;
+				return (
+					<Fragment key={fieldName}>
+						{"\n"}
+						{indent(depth + 1)}
+						<span style={TOKENS.field}>{fieldName}</span>
+						{optional ? <span style={TOKENS.optional}>?</span> : null}
+						<span style={TOKENS.punctuation}>:</span>{" "}
+						{renderValidatorNode(field.fieldType, depth + 1)}
+						<span style={TOKENS.punctuation}>,</span>
+						{index === entries.length - 1 ? "\n" : null}
+					</Fragment>
+				);
+			})}
+			{indent(depth)}
+			<span style={TOKENS.punctuation}>{"}"}</span>
+		</>
+	);
+}
+
+function renderValidatorNode(validator: unknown, depth: number): ReactNode {
+	const obj = asValidatorObject(validator);
+	if (!obj) return <span style={TOKENS.keyword}>unknown</span>;
+	const type = validatorType(obj);
+	if (!type) return <span style={TOKENS.keyword}>unknown</span>;
+
+	if (
+		type === "string" ||
+		type === "number" ||
+		type === "boolean" ||
+		type === "null" ||
+		type === "any" ||
+		type === "int64" ||
+		type === "float64"
+	) {
+		return <span style={TOKENS.keyword}>{type}</span>;
+	}
+
+	if (type === "id") {
+		const tableName = String(obj.tableName ?? "");
+		return (
+			<>
+				<span style={TOKENS.idType}>Id</span>
+				<span style={TOKENS.punctuation}>{"<"}</span>
+				<span style={TOKENS.stringLiteral}>
+					"
+					{tableName}
+					"
+				</span>
+				<span style={TOKENS.punctuation}>{">"}</span>
+			</>
+		);
+	}
+
+	if (type === "literal") return renderLiteral(obj.value);
+
+	if (type === "array") {
+		const itemType = obj.items;
+		const itemTypeName = validatorType(itemType);
+		const wraps = itemTypeName === "union" || itemTypeName === "object";
+		return (
+			<>
+				{wraps ? <span style={TOKENS.punctuation}>(</span> : null}
+				{renderValidatorNode(itemType, depth)}
+				{wraps ? <span style={TOKENS.punctuation}>)</span> : null}
+				<span style={TOKENS.punctuation}>[]</span>
+			</>
+		);
+	}
+
+	if (type === "union") {
+		const members = Array.isArray(obj.members) ? obj.members : [];
+		if (!members.length) return <span style={TOKENS.keyword}>unknown</span>;
+		const seen = new Map<string, number>();
+		const keyedMembers = members.map((member) => {
+			const signature = JSON.stringify(member) ?? String(member);
+			const nextCount = (seen.get(signature) ?? 0) + 1;
+			seen.set(signature, nextCount);
+			return { member, key: `${signature}:${nextCount}` };
+		});
+		const vertical = members.length > 3 || members.some((member) => isObjectValidator(member));
+		if (!vertical) {
+			return (
+				<>
+					{keyedMembers.map(({ member, key }, index) => (
+						<Fragment key={key}>
+							{index > 0 ? (
+								<>
+									{" "}
+									<span style={TOKENS.punctuation}>|</span>{" "}
+								</>
+							) : null}
+							{renderValidatorNode(member, depth)}
+						</Fragment>
+					))}
+				</>
+			);
+		}
+		return (
+			<>
+				{keyedMembers.map(({ member, key }, index) => (
+					<Fragment key={key}>
+						{index > 0 ? "\n" : null}
+						{indent(depth)}
+						<span style={TOKENS.punctuation}>|</span>{" "}
+						{renderValidatorNode(member, depth + 1)}
+					</Fragment>
+				))}
+			</>
+		);
+	}
+
+	if (type === "object") {
+		if (depth >= 3) {
+			return (
+				<details className="inline-block align-top">
+					<summary
+						className="inline-flex cursor-pointer rounded-md px-1.5 py-0.5 ring-1 ring-white/10"
+						style={{
+							color: "var(--phoenix-text-muted)",
+							backgroundColor: "var(--phoenix-input-bg)",
+							listStyle: "none",
+						}}
+					>
+						<span style={TOKENS.punctuation}>{"{ ... }"}</span>
+					</summary>
+					<div className="mt-1">{renderObjectFields(obj, depth)}</div>
+				</details>
+			);
+		}
+		return renderObjectFields(obj, depth);
+	}
+
+	if (type === "record") {
+		const keyType = obj.keys;
+		const values = (obj.values as Record<string, unknown> | undefined) ?? {};
+		return (
+			<>
+				<span style={TOKENS.keyword}>Record</span>
+				<span style={TOKENS.punctuation}>{"<"}</span>
+				{renderValidatorNode(keyType, depth + 1)}
+				<span style={TOKENS.punctuation}>,</span>{" "}
+				{renderValidatorNode(values.fieldType, depth + 1)}
+				<span style={TOKENS.punctuation}>{">"}</span>
+			</>
+		);
+	}
+
+	return <span style={TOKENS.keyword}>{type}</span>;
+}
+
+export function ValidatorDisplay({
+	validator,
+	depth = 0,
+}: {
+	validator: unknown | null;
+	depth?: number;
+}) {
+	const empty = validator == null;
+	return (
+		<pre
+			className="mt-2 text-xs leading-5 whitespace-pre-wrap break-words overflow-auto"
+			style={{
+				color: "var(--phoenix-text)",
+				fontFamily: "'JetBrains Mono', 'IBM Plex Mono', monospace",
+			}}
+		>
+			<code>
+				{empty ? (
+					<span style={TOKENS.comment}>{"// no arguments"}</span>
+				) : (
+					renderValidatorNode(validator, depth)
+				)}
+			</code>
+		</pre>
+	);
 }
 
 function Layout({
@@ -528,8 +773,6 @@ export function IndexPage({
 
 export function ModulePage({
 	module,
-	formatArgs,
-	formatReturns,
 	title,
 	baseHref = "",
 	nav,
@@ -577,8 +820,6 @@ export function ModulePage({
 				<div className="min-w-0">
 					<ul className="space-y-5">
 						{module.functions.map((fn) => {
-							const argsStr = formatArgs(fn);
-							const returnsStr = formatReturns(fn);
 							const docsLink = docsLinkForFunctionType(fn.functionType);
 							const functionName = fn.identifier.includes(":")
 								? fn.identifier.slice(fn.identifier.indexOf(":") + 1)
@@ -640,12 +881,7 @@ export function ModulePage({
 											>
 												args
 											</div>
-											<div
-												className="mt-2 font-mono text-xs break-words"
-												style={{ color: "var(--phoenix-text-dim)" }}
-											>
-												{argsStr}
-											</div>
+											<ValidatorDisplay validator={fn.args} />
 										</div>
 										<div
 											className="rounded-xl p-3"
@@ -661,12 +897,7 @@ export function ModulePage({
 											>
 												returns
 											</div>
-											<div
-												className="mt-2 font-mono text-xs break-words"
-												style={{ color: "var(--phoenix-text-dim)" }}
-											>
-												{returnsStr}
-											</div>
+											<ValidatorDisplay validator={fn.returns} />
 										</div>
 									</div>
 
@@ -690,42 +921,7 @@ export function ModulePage({
 				</div>
 
 				<aside className="mt-8">
-					<div className="sticky top-24 space-y-6">
-						<div
-							id="convexdoc-runner-panel"
-							className="rounded-2xl phoenix-glass overflow-hidden"
-						>
-							<div className="px-4 py-3 border-b border-white/10">
-								<div
-									className="text-sm font-semibold"
-									style={{ color: "var(--phoenix-text)" }}
-								>
-									Function Runner
-								</div>
-								<div
-									className="mt-1 text-xs"
-									style={{ color: "var(--phoenix-text-muted)" }}
-								>
-									Select a function to run it.
-								</div>
-							</div>
-							<div
-								className="p-4 text-sm"
-								style={{ color: "var(--phoenix-text-muted)" }}
-							>
-								<div
-									className="rounded-xl p-3"
-									style={{
-										backgroundColor: "var(--phoenix-app-surface)",
-										boxShadow:
-											"0 1px 0 0 rgba(255,255,255,0.05) inset, 0 1px 3px 0 rgba(0,0,0,0.5)",
-									}}
-								>
-									Waiting for selection…
-								</div>
-							</div>
-						</div>
-
+					<div className="sticky top-24 space-y-6 max-h-[calc(100vh-6rem)] overflow-y-auto pr-1 pb-6">
 						<details
 							className="rounded-2xl phoenix-glass overflow-hidden group"
 							open={module.functions.length <= 10}
@@ -760,6 +956,41 @@ export function ModulePage({
 								</ul>
 							</div>
 						</details>
+
+						<div
+							id="convexdoc-runner-panel"
+							className="rounded-2xl phoenix-glass overflow-hidden"
+						>
+							<div className="px-4 py-3 border-b border-white/10">
+								<div
+									className="text-sm font-semibold"
+									style={{ color: "var(--phoenix-text)" }}
+								>
+									Function Runner
+								</div>
+								<div
+									className="mt-1 text-xs"
+									style={{ color: "var(--phoenix-text-muted)" }}
+								>
+									Select a function to run it.
+								</div>
+							</div>
+							<div
+								className="p-4 text-sm"
+								style={{ color: "var(--phoenix-text-muted)" }}
+							>
+								<div
+									className="rounded-xl p-3"
+									style={{
+										backgroundColor: "var(--phoenix-app-surface)",
+										boxShadow:
+											"0 1px 0 0 rgba(255,255,255,0.05) inset, 0 1px 3px 0 rgba(0,0,0,0.5)",
+									}}
+								>
+									Waiting for selection…
+								</div>
+							</div>
+						</div>
 					</div>
 				</aside>
 			</div>
