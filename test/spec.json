@@ -1,0 +1,1938 @@
+{
+	"url": "https://fine-raven-957.convex.cloud",
+	"functions": [
+		{
+			"functionType": "HttpAction",
+			"method": "GET",
+			"path": "/task"
+		},
+		{
+			"functionType": "HttpAction",
+			"method": "OPTIONS",
+			"path": "/task"
+		},
+		{
+			"args": {
+				"type": "object",
+				"value": {
+					"authorId": {
+						"fieldType": {
+							"type": "string"
+						},
+						"optional": false
+					},
+					"body": {
+						"fieldType": {
+							"type": "string"
+						},
+						"optional": false
+					},
+					"taskId": {
+						"fieldType": {
+							"tableName": "tasks",
+							"type": "id"
+						},
+						"optional": false
+					}
+				}
+			},
+			"functionType": "Mutation",
+			"identifier": "tasks.js:addComment",
+			"returns": {
+				"tableName": "comments",
+				"type": "id"
+			},
+			"visibility": {
+				"kind": "public"
+			}
+		},
+		{
+			"args": {
+				"type": "object",
+				"value": {
+					"assigneeId": {
+						"fieldType": {
+							"type": "string"
+						},
+						"optional": false
+					},
+					"id": {
+						"fieldType": {
+							"tableName": "tasks",
+							"type": "id"
+						},
+						"optional": false
+					}
+				}
+			},
+			"functionType": "Mutation",
+			"identifier": "tasks.js:assignTask",
+			"returns": {
+				"type": "string"
+			},
+			"visibility": {
+				"kind": "public"
+			}
+		},
+		{
+			"args": {
+				"type": "object",
+				"value": {
+					"assigneeId": {
+						"fieldType": {
+							"type": "string"
+						},
+						"optional": true
+					},
+					"description": {
+						"fieldType": {
+							"type": "string"
+						},
+						"optional": true
+					},
+					"done": {
+						"fieldType": {
+							"type": "boolean"
+						},
+						"optional": true
+					},
+					"dueDate": {
+						"fieldType": {
+							"type": "number"
+						},
+						"optional": true
+					},
+					"listId": {
+						"fieldType": {
+							"tableName": "lists",
+							"type": "id"
+						},
+						"optional": true
+					},
+					"priority": {
+						"fieldType": {
+							"type": "number"
+						},
+						"optional": true
+					},
+					"status": {
+						"fieldType": {
+							"type": "union",
+							"value": [
+								{
+									"type": "literal",
+									"value": "todo"
+								},
+								{
+									"type": "literal",
+									"value": "in_progress"
+								},
+								{
+									"type": "literal",
+									"value": "done"
+								}
+							]
+						},
+						"optional": true
+					},
+					"title": {
+						"fieldType": {
+							"type": "string"
+						},
+						"optional": true
+					}
+				}
+			},
+			"functionType": "Mutation",
+			"identifier": "tasks.js:createTask",
+			"returns": {
+				"tableName": "tasks",
+				"type": "id"
+			},
+			"visibility": {
+				"kind": "public"
+			}
+		},
+		{
+			"args": {
+				"type": "object",
+				"value": {
+					"id": {
+						"fieldType": {
+							"tableName": "tasks",
+							"type": "id"
+						},
+						"optional": false
+					}
+				}
+			},
+			"functionType": "Mutation",
+			"identifier": "tasks.js:deleteTask",
+			"returns": {
+				"tableName": "tasks",
+				"type": "id"
+			},
+			"visibility": {
+				"kind": "public"
+			}
+		},
+		{
+			"args": {
+				"type": "object",
+				"value": {
+					"id": {
+						"fieldType": {
+							"tableName": "tasks",
+							"type": "id"
+						},
+						"optional": false
+					}
+				}
+			},
+			"functionType": "Query",
+			"identifier": "tasks.js:getTask",
+			"returns": {
+				"type": "union",
+				"value": [
+					{
+						"type": "object",
+						"value": {
+							"_creationTime": {
+								"fieldType": {
+									"type": "number"
+								},
+								"optional": false
+							},
+							"_id": {
+								"fieldType": {
+									"tableName": "tasks",
+									"type": "id"
+								},
+								"optional": false
+							},
+							"assigneeId": {
+								"fieldType": {
+									"type": "string"
+								},
+								"optional": true
+							},
+							"createdAt": {
+								"fieldType": {
+									"type": "number"
+								},
+								"optional": false
+							},
+							"description": {
+								"fieldType": {
+									"type": "string"
+								},
+								"optional": true
+							},
+							"done": {
+								"fieldType": {
+									"type": "boolean"
+								},
+								"optional": false
+							},
+							"dueDate": {
+								"fieldType": {
+									"type": "number"
+								},
+								"optional": true
+							},
+							"listId": {
+								"fieldType": {
+									"tableName": "lists",
+									"type": "id"
+								},
+								"optional": true
+							},
+							"priority": {
+								"fieldType": {
+									"type": "number"
+								},
+								"optional": false
+							},
+							"status": {
+								"fieldType": {
+									"type": "union",
+									"value": [
+										{
+											"type": "literal",
+											"value": "todo"
+										},
+										{
+											"type": "literal",
+											"value": "in_progress"
+										},
+										{
+											"type": "literal",
+											"value": "done"
+										}
+									]
+								},
+								"optional": false
+							},
+							"title": {
+								"fieldType": {
+									"type": "string"
+								},
+								"optional": true
+							},
+							"updatedAt": {
+								"fieldType": {
+									"type": "number"
+								},
+								"optional": false
+							}
+						}
+					},
+					{
+						"type": "null"
+					}
+				]
+			},
+			"visibility": {
+				"kind": "public"
+			}
+		},
+		{
+			"args": {
+				"type": "object",
+				"value": {
+					"taskId": {
+						"fieldType": {
+							"tableName": "tasks",
+							"type": "id"
+						},
+						"optional": false
+					}
+				}
+			},
+			"functionType": "Query",
+			"identifier": "tasks.js:getTaskWithComments",
+			"returns": {
+				"type": "union",
+				"value": [
+					{
+						"type": "object",
+						"value": {
+							"comments": {
+								"fieldType": {
+									"type": "array",
+									"value": {
+										"type": "object",
+										"value": {
+											"_creationTime": {
+												"fieldType": {
+													"type": "number"
+												},
+												"optional": false
+											},
+											"_id": {
+												"fieldType": {
+													"tableName": "comments",
+													"type": "id"
+												},
+												"optional": false
+											},
+											"authorId": {
+												"fieldType": {
+													"type": "string"
+												},
+												"optional": false
+											},
+											"body": {
+												"fieldType": {
+													"type": "string"
+												},
+												"optional": false
+											},
+											"createdAt": {
+												"fieldType": {
+													"type": "number"
+												},
+												"optional": false
+											},
+											"taskId": {
+												"fieldType": {
+													"tableName": "tasks",
+													"type": "id"
+												},
+												"optional": false
+											}
+										}
+									}
+								},
+								"optional": false
+							},
+							"task": {
+								"fieldType": {
+									"type": "object",
+									"value": {
+										"_creationTime": {
+											"fieldType": {
+												"type": "number"
+											},
+											"optional": false
+										},
+										"_id": {
+											"fieldType": {
+												"tableName": "tasks",
+												"type": "id"
+											},
+											"optional": false
+										},
+										"assigneeId": {
+											"fieldType": {
+												"type": "string"
+											},
+											"optional": true
+										},
+										"createdAt": {
+											"fieldType": {
+												"type": "number"
+											},
+											"optional": false
+										},
+										"description": {
+											"fieldType": {
+												"type": "string"
+											},
+											"optional": true
+										},
+										"done": {
+											"fieldType": {
+												"type": "boolean"
+											},
+											"optional": false
+										},
+										"dueDate": {
+											"fieldType": {
+												"type": "number"
+											},
+											"optional": true
+										},
+										"listId": {
+											"fieldType": {
+												"tableName": "lists",
+												"type": "id"
+											},
+											"optional": true
+										},
+										"priority": {
+											"fieldType": {
+												"type": "number"
+											},
+											"optional": false
+										},
+										"status": {
+											"fieldType": {
+												"type": "union",
+												"value": [
+													{
+														"type": "literal",
+														"value": "todo"
+													},
+													{
+														"type": "literal",
+														"value": "in_progress"
+													},
+													{
+														"type": "literal",
+														"value": "done"
+													}
+												]
+											},
+											"optional": false
+										},
+										"title": {
+											"fieldType": {
+												"type": "string"
+											},
+											"optional": true
+										},
+										"updatedAt": {
+											"fieldType": {
+												"type": "number"
+											},
+											"optional": false
+										}
+									}
+								},
+								"optional": false
+							}
+						}
+					},
+					{
+						"type": "null"
+					}
+				]
+			},
+			"visibility": {
+				"kind": "public"
+			}
+		},
+		{
+			"args": {
+				"type": "object",
+				"value": {
+					"dueBefore": {
+						"fieldType": {
+							"type": "number"
+						},
+						"optional": false
+					}
+				}
+			},
+			"functionType": "Query",
+			"identifier": "tasks.js:getTasksDueBefore",
+			"returns": {
+				"type": "array",
+				"value": {
+					"type": "object",
+					"value": {
+						"_creationTime": {
+							"fieldType": {
+								"type": "number"
+							},
+							"optional": false
+						},
+						"_id": {
+							"fieldType": {
+								"tableName": "tasks",
+								"type": "id"
+							},
+							"optional": false
+						},
+						"assigneeId": {
+							"fieldType": {
+								"type": "string"
+							},
+							"optional": true
+						},
+						"createdAt": {
+							"fieldType": {
+								"type": "number"
+							},
+							"optional": false
+						},
+						"description": {
+							"fieldType": {
+								"type": "string"
+							},
+							"optional": true
+						},
+						"done": {
+							"fieldType": {
+								"type": "boolean"
+							},
+							"optional": false
+						},
+						"dueDate": {
+							"fieldType": {
+								"type": "number"
+							},
+							"optional": true
+						},
+						"listId": {
+							"fieldType": {
+								"tableName": "lists",
+								"type": "id"
+							},
+							"optional": true
+						},
+						"priority": {
+							"fieldType": {
+								"type": "number"
+							},
+							"optional": false
+						},
+						"status": {
+							"fieldType": {
+								"type": "union",
+								"value": [
+									{
+										"type": "literal",
+										"value": "todo"
+									},
+									{
+										"type": "literal",
+										"value": "in_progress"
+									},
+									{
+										"type": "literal",
+										"value": "done"
+									}
+								]
+							},
+							"optional": false
+						},
+						"title": {
+							"fieldType": {
+								"type": "string"
+							},
+							"optional": true
+						},
+						"updatedAt": {
+							"fieldType": {
+								"type": "number"
+							},
+							"optional": false
+						}
+					}
+				}
+			},
+			"visibility": {
+				"kind": "public"
+			}
+		},
+		{
+			"args": {
+				"type": "object",
+				"value": {
+					"listId": {
+						"fieldType": {
+							"tableName": "lists",
+							"type": "id"
+						},
+						"optional": false
+					}
+				}
+			},
+			"functionType": "Query",
+			"identifier": "tasks.js:getTasksInList",
+			"returns": {
+				"type": "array",
+				"value": {
+					"type": "object",
+					"value": {
+						"_creationTime": {
+							"fieldType": {
+								"type": "number"
+							},
+							"optional": false
+						},
+						"_id": {
+							"fieldType": {
+								"tableName": "tasks",
+								"type": "id"
+							},
+							"optional": false
+						},
+						"assigneeId": {
+							"fieldType": {
+								"type": "string"
+							},
+							"optional": true
+						},
+						"createdAt": {
+							"fieldType": {
+								"type": "number"
+							},
+							"optional": false
+						},
+						"description": {
+							"fieldType": {
+								"type": "string"
+							},
+							"optional": true
+						},
+						"done": {
+							"fieldType": {
+								"type": "boolean"
+							},
+							"optional": false
+						},
+						"dueDate": {
+							"fieldType": {
+								"type": "number"
+							},
+							"optional": true
+						},
+						"listId": {
+							"fieldType": {
+								"tableName": "lists",
+								"type": "id"
+							},
+							"optional": true
+						},
+						"priority": {
+							"fieldType": {
+								"type": "number"
+							},
+							"optional": false
+						},
+						"status": {
+							"fieldType": {
+								"type": "union",
+								"value": [
+									{
+										"type": "literal",
+										"value": "todo"
+									},
+									{
+										"type": "literal",
+										"value": "in_progress"
+									},
+									{
+										"type": "literal",
+										"value": "done"
+									}
+								]
+							},
+							"optional": false
+						},
+						"title": {
+							"fieldType": {
+								"type": "string"
+							},
+							"optional": true
+						},
+						"updatedAt": {
+							"fieldType": {
+								"type": "number"
+							},
+							"optional": false
+						}
+					}
+				}
+			},
+			"visibility": {
+				"kind": "public"
+			}
+		},
+		{
+			"args": {
+				"type": "object",
+				"value": {
+					"command": {
+						"fieldType": {
+							"type": "string"
+						},
+						"optional": false
+					}
+				}
+			},
+			"functionType": "Action",
+			"identifier": "tasks.js:helperInternalAction",
+			"returns": {
+				"type": "string"
+			},
+			"visibility": {
+				"kind": "internal"
+			}
+		},
+		{
+			"args": {
+				"type": "object",
+				"value": {
+					"count": {
+						"fieldType": {
+							"type": "number"
+						},
+						"optional": false
+					}
+				}
+			},
+			"functionType": "Mutation",
+			"identifier": "tasks.js:helperInternalMutation",
+			"returns": {
+				"type": "number"
+			},
+			"visibility": {
+				"kind": "internal"
+			}
+		},
+		{
+			"args": {
+				"type": "object",
+				"value": {
+					"info": {
+						"fieldType": {
+							"type": "string"
+						},
+						"optional": false
+					}
+				}
+			},
+			"functionType": "Query",
+			"identifier": "tasks.js:helperInternalQuery",
+			"returns": {
+				"type": "string"
+			},
+			"visibility": {
+				"kind": "internal"
+			}
+		},
+		{
+			"args": {
+				"type": "object",
+				"value": {}
+			},
+			"functionType": "Query",
+			"identifier": "tasks.js:listDoneTasks",
+			"returns": {
+				"type": "array",
+				"value": {
+					"type": "object",
+					"value": {
+						"_creationTime": {
+							"fieldType": {
+								"type": "number"
+							},
+							"optional": false
+						},
+						"_id": {
+							"fieldType": {
+								"tableName": "tasks",
+								"type": "id"
+							},
+							"optional": false
+						},
+						"assigneeId": {
+							"fieldType": {
+								"type": "string"
+							},
+							"optional": true
+						},
+						"createdAt": {
+							"fieldType": {
+								"type": "number"
+							},
+							"optional": false
+						},
+						"description": {
+							"fieldType": {
+								"type": "string"
+							},
+							"optional": true
+						},
+						"done": {
+							"fieldType": {
+								"type": "boolean"
+							},
+							"optional": false
+						},
+						"dueDate": {
+							"fieldType": {
+								"type": "number"
+							},
+							"optional": true
+						},
+						"listId": {
+							"fieldType": {
+								"tableName": "lists",
+								"type": "id"
+							},
+							"optional": true
+						},
+						"priority": {
+							"fieldType": {
+								"type": "number"
+							},
+							"optional": false
+						},
+						"status": {
+							"fieldType": {
+								"type": "union",
+								"value": [
+									{
+										"type": "literal",
+										"value": "todo"
+									},
+									{
+										"type": "literal",
+										"value": "in_progress"
+									},
+									{
+										"type": "literal",
+										"value": "done"
+									}
+								]
+							},
+							"optional": false
+						},
+						"title": {
+							"fieldType": {
+								"type": "string"
+							},
+							"optional": true
+						},
+						"updatedAt": {
+							"fieldType": {
+								"type": "number"
+							},
+							"optional": false
+						}
+					}
+				}
+			},
+			"visibility": {
+				"kind": "public"
+			}
+		},
+		{
+			"args": {
+				"type": "object",
+				"value": {
+					"limit": {
+						"fieldType": {
+							"type": "number"
+						},
+						"optional": true
+					},
+					"status": {
+						"fieldType": {
+							"type": "union",
+							"value": [
+								{
+									"type": "literal",
+									"value": "todo"
+								},
+								{
+									"type": "literal",
+									"value": "in_progress"
+								},
+								{
+									"type": "literal",
+									"value": "done"
+								}
+							]
+						},
+						"optional": true
+					}
+				}
+			},
+			"functionType": "Query",
+			"identifier": "tasks.js:listTasks",
+			"returns": {
+				"type": "array",
+				"value": {
+					"type": "object",
+					"value": {
+						"_creationTime": {
+							"fieldType": {
+								"type": "number"
+							},
+							"optional": false
+						},
+						"_id": {
+							"fieldType": {
+								"tableName": "tasks",
+								"type": "id"
+							},
+							"optional": false
+						},
+						"assigneeId": {
+							"fieldType": {
+								"type": "string"
+							},
+							"optional": true
+						},
+						"createdAt": {
+							"fieldType": {
+								"type": "number"
+							},
+							"optional": false
+						},
+						"description": {
+							"fieldType": {
+								"type": "string"
+							},
+							"optional": true
+						},
+						"done": {
+							"fieldType": {
+								"type": "boolean"
+							},
+							"optional": false
+						},
+						"dueDate": {
+							"fieldType": {
+								"type": "number"
+							},
+							"optional": true
+						},
+						"listId": {
+							"fieldType": {
+								"tableName": "lists",
+								"type": "id"
+							},
+							"optional": true
+						},
+						"priority": {
+							"fieldType": {
+								"type": "number"
+							},
+							"optional": false
+						},
+						"status": {
+							"fieldType": {
+								"type": "union",
+								"value": [
+									{
+										"type": "literal",
+										"value": "todo"
+									},
+									{
+										"type": "literal",
+										"value": "in_progress"
+									},
+									{
+										"type": "literal",
+										"value": "done"
+									}
+								]
+							},
+							"optional": false
+						},
+						"title": {
+							"fieldType": {
+								"type": "string"
+							},
+							"optional": true
+						},
+						"updatedAt": {
+							"fieldType": {
+								"type": "number"
+							},
+							"optional": false
+						}
+					}
+				}
+			},
+			"visibility": {
+				"kind": "public"
+			}
+		},
+		{
+			"args": {
+				"type": "object",
+				"value": {
+					"assigneeId": {
+						"fieldType": {
+							"type": "string"
+						},
+						"optional": false
+					}
+				}
+			},
+			"functionType": "Query",
+			"identifier": "tasks.js:listTasksByAssignee",
+			"returns": {
+				"type": "array",
+				"value": {
+					"type": "object",
+					"value": {
+						"_creationTime": {
+							"fieldType": {
+								"type": "number"
+							},
+							"optional": false
+						},
+						"_id": {
+							"fieldType": {
+								"tableName": "tasks",
+								"type": "id"
+							},
+							"optional": false
+						},
+						"assigneeId": {
+							"fieldType": {
+								"type": "string"
+							},
+							"optional": true
+						},
+						"createdAt": {
+							"fieldType": {
+								"type": "number"
+							},
+							"optional": false
+						},
+						"description": {
+							"fieldType": {
+								"type": "string"
+							},
+							"optional": true
+						},
+						"done": {
+							"fieldType": {
+								"type": "boolean"
+							},
+							"optional": false
+						},
+						"dueDate": {
+							"fieldType": {
+								"type": "number"
+							},
+							"optional": true
+						},
+						"listId": {
+							"fieldType": {
+								"tableName": "lists",
+								"type": "id"
+							},
+							"optional": true
+						},
+						"priority": {
+							"fieldType": {
+								"type": "number"
+							},
+							"optional": false
+						},
+						"status": {
+							"fieldType": {
+								"type": "union",
+								"value": [
+									{
+										"type": "literal",
+										"value": "todo"
+									},
+									{
+										"type": "literal",
+										"value": "in_progress"
+									},
+									{
+										"type": "literal",
+										"value": "done"
+									}
+								]
+							},
+							"optional": false
+						},
+						"title": {
+							"fieldType": {
+								"type": "string"
+							},
+							"optional": true
+						},
+						"updatedAt": {
+							"fieldType": {
+								"type": "number"
+							},
+							"optional": false
+						}
+					}
+				}
+			},
+			"visibility": {
+				"kind": "public"
+			}
+		},
+		{
+			"args": {
+				"type": "object",
+				"value": {
+					"status": {
+						"fieldType": {
+							"type": "union",
+							"value": [
+								{
+									"type": "literal",
+									"value": "todo"
+								},
+								{
+									"type": "literal",
+									"value": "in_progress"
+								},
+								{
+									"type": "literal",
+									"value": "done"
+								}
+							]
+						},
+						"optional": false
+					}
+				}
+			},
+			"functionType": "Query",
+			"identifier": "tasks.js:listTasksByStatus",
+			"returns": {
+				"type": "array",
+				"value": {
+					"type": "object",
+					"value": {
+						"_creationTime": {
+							"fieldType": {
+								"type": "number"
+							},
+							"optional": false
+						},
+						"_id": {
+							"fieldType": {
+								"tableName": "tasks",
+								"type": "id"
+							},
+							"optional": false
+						},
+						"assigneeId": {
+							"fieldType": {
+								"type": "string"
+							},
+							"optional": true
+						},
+						"createdAt": {
+							"fieldType": {
+								"type": "number"
+							},
+							"optional": false
+						},
+						"description": {
+							"fieldType": {
+								"type": "string"
+							},
+							"optional": true
+						},
+						"done": {
+							"fieldType": {
+								"type": "boolean"
+							},
+							"optional": false
+						},
+						"dueDate": {
+							"fieldType": {
+								"type": "number"
+							},
+							"optional": true
+						},
+						"listId": {
+							"fieldType": {
+								"tableName": "lists",
+								"type": "id"
+							},
+							"optional": true
+						},
+						"priority": {
+							"fieldType": {
+								"type": "number"
+							},
+							"optional": false
+						},
+						"status": {
+							"fieldType": {
+								"type": "union",
+								"value": [
+									{
+										"type": "literal",
+										"value": "todo"
+									},
+									{
+										"type": "literal",
+										"value": "in_progress"
+									},
+									{
+										"type": "literal",
+										"value": "done"
+									}
+								]
+							},
+							"optional": false
+						},
+						"title": {
+							"fieldType": {
+								"type": "string"
+							},
+							"optional": true
+						},
+						"updatedAt": {
+							"fieldType": {
+								"type": "number"
+							},
+							"optional": false
+						}
+					}
+				}
+			},
+			"visibility": {
+				"kind": "public"
+			}
+		},
+		{
+			"args": {
+				"type": "object",
+				"value": {
+					"assigneeId": {
+						"fieldType": {
+							"type": "string"
+						},
+						"optional": false
+					},
+					"taskId": {
+						"fieldType": {
+							"type": "string"
+						},
+						"optional": false
+					}
+				}
+			},
+			"functionType": "Action",
+			"identifier": "tasks.js:notifyTaskAssigned",
+			"returns": {
+				"type": "object",
+				"value": {
+					"assigneeId": {
+						"fieldType": {
+							"type": "string"
+						},
+						"optional": false
+					},
+					"sent": {
+						"fieldType": {
+							"type": "boolean"
+						},
+						"optional": false
+					},
+					"taskId": {
+						"fieldType": {
+							"type": "string"
+						},
+						"optional": false
+					}
+				}
+			},
+			"visibility": {
+				"kind": "public"
+			}
+		},
+		{
+			"args": {
+				"type": "object",
+				"value": {
+					"taskIds": {
+						"fieldType": {
+							"type": "array",
+							"value": {
+								"tableName": "tasks",
+								"type": "id"
+							}
+						},
+						"optional": false
+					}
+				}
+			},
+			"functionType": "Action",
+			"identifier": "tasks.js:processTaskBatch",
+			"returns": {
+				"type": "object",
+				"value": {
+					"processed": {
+						"fieldType": {
+							"type": "number"
+						},
+						"optional": false
+					}
+				}
+			},
+			"visibility": {
+				"kind": "public"
+			}
+		},
+		{
+			"args": {
+				"type": "object",
+				"value": {
+					"delayMs": {
+						"fieldType": {
+							"type": "number"
+						},
+						"optional": true
+					},
+					"taskId": {
+						"fieldType": {
+							"type": "string"
+						},
+						"optional": false
+					}
+				}
+			},
+			"functionType": "Action",
+			"identifier": "tasks.js:runTask",
+			"returns": {
+				"type": "object",
+				"value": {
+					"ranAt": {
+						"fieldType": {
+							"type": "number"
+						},
+						"optional": false
+					},
+					"taskId": {
+						"fieldType": {
+							"type": "string"
+						},
+						"optional": false
+					}
+				}
+			},
+			"visibility": {
+				"kind": "public"
+			}
+		},
+		{
+			"args": {
+				"type": "object",
+				"value": {
+					"titleSubstring": {
+						"fieldType": {
+							"type": "string"
+						},
+						"optional": false
+					}
+				}
+			},
+			"functionType": "Query",
+			"identifier": "tasks.js:searchTasks",
+			"returns": {
+				"type": "array",
+				"value": {
+					"type": "object",
+					"value": {
+						"_creationTime": {
+							"fieldType": {
+								"type": "number"
+							},
+							"optional": false
+						},
+						"_id": {
+							"fieldType": {
+								"tableName": "tasks",
+								"type": "id"
+							},
+							"optional": false
+						},
+						"assigneeId": {
+							"fieldType": {
+								"type": "string"
+							},
+							"optional": true
+						},
+						"createdAt": {
+							"fieldType": {
+								"type": "number"
+							},
+							"optional": false
+						},
+						"description": {
+							"fieldType": {
+								"type": "string"
+							},
+							"optional": true
+						},
+						"done": {
+							"fieldType": {
+								"type": "boolean"
+							},
+							"optional": false
+						},
+						"dueDate": {
+							"fieldType": {
+								"type": "number"
+							},
+							"optional": true
+						},
+						"listId": {
+							"fieldType": {
+								"tableName": "lists",
+								"type": "id"
+							},
+							"optional": true
+						},
+						"priority": {
+							"fieldType": {
+								"type": "number"
+							},
+							"optional": false
+						},
+						"status": {
+							"fieldType": {
+								"type": "union",
+								"value": [
+									{
+										"type": "literal",
+										"value": "todo"
+									},
+									{
+										"type": "literal",
+										"value": "in_progress"
+									},
+									{
+										"type": "literal",
+										"value": "done"
+									}
+								]
+							},
+							"optional": false
+						},
+						"title": {
+							"fieldType": {
+								"type": "string"
+							},
+							"optional": true
+						},
+						"updatedAt": {
+							"fieldType": {
+								"type": "number"
+							},
+							"optional": false
+						}
+					}
+				}
+			},
+			"visibility": {
+				"kind": "public"
+			}
+		},
+		{
+			"args": {
+				"type": "object",
+				"value": {
+					"dueDate": {
+						"fieldType": {
+							"type": "number"
+						},
+						"optional": false
+					},
+					"id": {
+						"fieldType": {
+							"tableName": "tasks",
+							"type": "id"
+						},
+						"optional": false
+					}
+				}
+			},
+			"functionType": "Mutation",
+			"identifier": "tasks.js:setDueDate",
+			"returns": {
+				"type": "number"
+			},
+			"visibility": {
+				"kind": "public"
+			}
+		},
+		{
+			"args": {
+				"type": "object",
+				"value": {
+					"id": {
+						"fieldType": {
+							"tableName": "tasks",
+							"type": "id"
+						},
+						"optional": false
+					},
+					"status": {
+						"fieldType": {
+							"type": "union",
+							"value": [
+								{
+									"type": "literal",
+									"value": "todo"
+								},
+								{
+									"type": "literal",
+									"value": "in_progress"
+								},
+								{
+									"type": "literal",
+									"value": "done"
+								}
+							]
+						},
+						"optional": false
+					}
+				}
+			},
+			"functionType": "Mutation",
+			"identifier": "tasks.js:setStatus",
+			"returns": {
+				"type": "union",
+				"value": [
+					{
+						"type": "literal",
+						"value": "todo"
+					},
+					{
+						"type": "literal",
+						"value": "in_progress"
+					},
+					{
+						"type": "literal",
+						"value": "done"
+					}
+				]
+			},
+			"visibility": {
+				"kind": "public"
+			}
+		},
+		{
+			"args": {
+				"type": "object",
+				"value": {
+					"sourceUrl": {
+						"fieldType": {
+							"type": "string"
+						},
+						"optional": false
+					}
+				}
+			},
+			"functionType": "Action",
+			"identifier": "tasks.js:syncTasksFromExternal",
+			"returns": {
+				"type": "object",
+				"value": {
+					"source": {
+						"fieldType": {
+							"type": "string"
+						},
+						"optional": false
+					},
+					"synced": {
+						"fieldType": {
+							"type": "number"
+						},
+						"optional": false
+					}
+				}
+			},
+			"visibility": {
+				"kind": "public"
+			}
+		},
+		{
+			"args": {
+				"type": "object",
+				"value": {
+					"id": {
+						"fieldType": {
+							"tableName": "tasks",
+							"type": "id"
+						},
+						"optional": false
+					}
+				}
+			},
+			"functionType": "Mutation",
+			"identifier": "tasks.js:toggleDone",
+			"returns": {
+				"type": "boolean"
+			},
+			"visibility": {
+				"kind": "public"
+			}
+		},
+		{
+			"args": {
+				"type": "object",
+				"value": {
+					"assigneeId": {
+						"fieldType": {
+							"type": "string"
+						},
+						"optional": true
+					},
+					"description": {
+						"fieldType": {
+							"type": "string"
+						},
+						"optional": true
+					},
+					"done": {
+						"fieldType": {
+							"type": "boolean"
+						},
+						"optional": true
+					},
+					"dueDate": {
+						"fieldType": {
+							"type": "number"
+						},
+						"optional": true
+					},
+					"id": {
+						"fieldType": {
+							"tableName": "tasks",
+							"type": "id"
+						},
+						"optional": false
+					},
+					"priority": {
+						"fieldType": {
+							"type": "number"
+						},
+						"optional": true
+					},
+					"status": {
+						"fieldType": {
+							"type": "union",
+							"value": [
+								{
+									"type": "literal",
+									"value": "todo"
+								},
+								{
+									"type": "literal",
+									"value": "in_progress"
+								},
+								{
+									"type": "literal",
+									"value": "done"
+								}
+							]
+						},
+						"optional": true
+					},
+					"title": {
+						"fieldType": {
+							"type": "string"
+						},
+						"optional": true
+					}
+				}
+			},
+			"functionType": "Mutation",
+			"identifier": "tasks.js:updateTask",
+			"returns": {
+				"tableName": "tasks",
+				"type": "id"
+			},
+			"visibility": {
+				"kind": "public"
+			}
+		},
+		{
+			"args": {
+				"type": "object",
+				"value": {}
+			},
+			"functionType": "Query",
+			"identifier": "lists.js:listLists",
+			"returns": {
+				"type": "array",
+				"value": {
+					"type": "object",
+					"value": {
+						"_creationTime": {
+							"fieldType": {
+								"type": "number"
+							},
+							"optional": false
+						},
+						"_id": {
+							"fieldType": {
+								"tableName": "lists",
+								"type": "id"
+							},
+							"optional": false
+						},
+						"createdAt": {
+							"fieldType": {
+								"type": "number"
+							},
+							"optional": false
+						},
+						"name": {
+							"fieldType": {
+								"type": "string"
+							},
+							"optional": false
+						}
+					}
+				}
+			},
+			"visibility": {
+				"kind": "public"
+			}
+		},
+		{
+			"args": {
+				"type": "object",
+				"value": {
+					"id": {
+						"fieldType": {
+							"tableName": "lists",
+							"type": "id"
+						},
+						"optional": false
+					}
+				}
+			},
+			"functionType": "Query",
+			"identifier": "lists.js:getList",
+			"returns": {
+				"type": "union",
+				"value": [
+					{
+						"type": "object",
+						"value": {
+							"_creationTime": {
+								"fieldType": {
+									"type": "number"
+								},
+								"optional": false
+							},
+							"_id": {
+								"fieldType": {
+									"tableName": "lists",
+									"type": "id"
+								},
+								"optional": false
+							},
+							"createdAt": {
+								"fieldType": {
+									"type": "number"
+								},
+								"optional": false
+							},
+							"name": {
+								"fieldType": {
+									"type": "string"
+								},
+								"optional": false
+							}
+						}
+					},
+					{
+						"type": "null"
+					}
+				]
+			},
+			"visibility": {
+				"kind": "public"
+			}
+		},
+		{
+			"args": {
+				"type": "object",
+				"value": {
+					"name": {
+						"fieldType": {
+							"type": "string"
+						},
+						"optional": false
+					}
+				}
+			},
+			"functionType": "Query",
+			"identifier": "lists.js:getListByName",
+			"returns": {
+				"type": "union",
+				"value": [
+					{
+						"type": "object",
+						"value": {
+							"_creationTime": {
+								"fieldType": {
+									"type": "number"
+								},
+								"optional": false
+							},
+							"_id": {
+								"fieldType": {
+									"tableName": "lists",
+									"type": "id"
+								},
+								"optional": false
+							},
+							"createdAt": {
+								"fieldType": {
+									"type": "number"
+								},
+								"optional": false
+							},
+							"name": {
+								"fieldType": {
+									"type": "string"
+								},
+								"optional": false
+							}
+						}
+					},
+					{
+						"type": "null"
+					}
+				]
+			},
+			"visibility": {
+				"kind": "public"
+			}
+		},
+		{
+			"args": {
+				"type": "object",
+				"value": {
+					"name": {
+						"fieldType": {
+							"type": "string"
+						},
+						"optional": false
+					}
+				}
+			},
+			"functionType": "Mutation",
+			"identifier": "lists.js:createList",
+			"returns": {
+				"tableName": "lists",
+				"type": "id"
+			},
+			"visibility": {
+				"kind": "public"
+			}
+		},
+		{
+			"args": {
+				"type": "object",
+				"value": {
+					"id": {
+						"fieldType": {
+							"tableName": "lists",
+							"type": "id"
+						},
+						"optional": false
+					},
+					"name": {
+						"fieldType": {
+							"type": "string"
+						},
+						"optional": false
+					}
+				}
+			},
+			"functionType": "Mutation",
+			"identifier": "lists.js:renameList",
+			"returns": {
+				"tableName": "lists",
+				"type": "id"
+			},
+			"visibility": {
+				"kind": "public"
+			}
+		},
+		{
+			"args": {
+				"type": "object",
+				"value": {
+					"id": {
+						"fieldType": {
+							"tableName": "lists",
+							"type": "id"
+						},
+						"optional": false
+					}
+				}
+			},
+			"functionType": "Mutation",
+			"identifier": "lists.js:deleteList",
+			"returns": {
+				"tableName": "lists",
+				"type": "id"
+			},
+			"visibility": {
+				"kind": "public"
+			}
+		}
+	]
+}
