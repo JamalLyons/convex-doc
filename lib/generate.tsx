@@ -20,11 +20,8 @@ import { execa } from "execa";
 import { marked } from "marked";
 import { renderToStaticMarkup } from "react-dom/server";
 import type { ConvexDocCustomization } from "./config.js";
-import type {
-	ParsedFunctionSpec,
-} from "./function-spec.js";
+import type { ParsedFunctionSpec } from "./function-spec.js";
 import { extractHttpRoutes } from "./http-routes.js";
-import { extractJsDocs } from "./jsdoc.js";
 import { IndexPage, ModulePage } from "./pages.js";
 import {
 	filterSpecByFunctionTypes,
@@ -383,8 +380,6 @@ export async function generateDocs(
 	// Build the React client runtime.
 	await bundleClientApp(outputDir);
 
-	// JSDoc enrichment (best-effort; uses full spec for lookup)
-	const docsByIdentifier = await extractJsDocs(projectDir, spec);
 	const httpRoutes = await extractHttpRoutes(projectDir, spec);
 
 	const buildInfo = {
@@ -427,7 +422,6 @@ export async function generateDocs(
 			functionCount: m.functions.length,
 		})),
 		functions,
-		docsByIdentifier,
 		httpRoutes,
 	};
 	writeFileSync(

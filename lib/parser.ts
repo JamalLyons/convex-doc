@@ -214,9 +214,7 @@ export function formatValidator(v: ConvexValidator, depth = 0): string {
 		}
 		case "union": {
 			const u = v as { members?: ConvexValidator[]; value?: ConvexValidator[] };
-			const members =
-				u.members ??
-				(Array.isArray(u.value) ? u.value : []);
+			const members = u.members ?? (Array.isArray(u.value) ? u.value : []);
 			return members
 				.map((m) => (m != null ? formatValidator(m, depth) : "unknown"))
 				.join(" | ");

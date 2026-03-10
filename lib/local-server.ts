@@ -108,7 +108,9 @@ export async function serveDocsSite(opts: {
 			if (pathname === "/__convexdoc/run" && req.method === "POST") {
 				if (disableFunctionRunner) {
 					console.log(
-						chalk.yellow("[convexdoc] Function runner is disabled; request rejected."),
+						chalk.yellow(
+							"[convexdoc] Function runner is disabled; request rejected.",
+						),
 					);
 					res.statusCode = 403;
 					res.setHeader("content-type", "application/json; charset=utf-8");

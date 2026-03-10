@@ -25,10 +25,6 @@ interface HttpRoute {
 
 interface ManifestShape {
 	functions: ManifestFunction[];
-	docsByIdentifier?: Record<
-		string,
-		{ summary?: string; detailsMarkdown?: string; tags?: string[] }
-	>;
 	httpRoutes?: HttpRoute[];
 	buildInfo?: {
 		defaultHttpActionDeployUrl?: string;
@@ -53,6 +49,15 @@ async function loadManifest(): Promise<ManifestShape> {
 	const res = await fetch(MANIFEST_URL, { cache: "no-store" });
 	if (!res.ok) throw new Error("Failed to load manifest");
 	return (await res.json()) as ManifestShape;
+}
+
+function displayIdentifier(identifier: string): string {
+	const colonIndex = identifier.indexOf(":");
+	if (colonIndex === -1) {
+		return identifier.replace(/\.js$/i, "");
+	}
+	const modulePart = identifier.slice(0, colonIndex).replace(/\.js$/i, "");
+	return `${modulePart}${identifier.slice(colonIndex)}`;
 }
 
 function badgeClass(type: string): string {
@@ -258,7 +263,7 @@ function SearchResults({
 							{it.functionType}
 						</span>
 						<span className="font-mono text-sm text-[var(--phoenix-text)]">
-							{it.identifier}
+							{displayIdentifier(it.identifier)}
 						</span>
 					</div>
 					<div className="mt-1 text-xs text-[var(--phoenix-text-muted)]">
@@ -282,13 +287,6 @@ function RunnerPanel({
 			manifest?.functions.find((f) => f.identifier === selectedIdentifier) ??
 			null,
 		[manifest, selectedIdentifier],
-	);
-	const docs = useMemo(
-		() =>
-			(fn && manifest?.docsByIdentifier
-				? manifest.docsByIdentifier[fn.identifier]
-				: undefined) ?? null,
-		[fn, manifest],
 	);
 	const tokenKey = STORAGE.token;
 	const argsKey = fn ? `convexdoc:args:${fn.identifier}` : "";
@@ -337,12 +335,18 @@ function RunnerPanel({
 	if (manifest.buildInfo?.functionRunnerDisabled) {
 		return (
 			<div className="rounded-xl p-3 bg-[var(--phoenix-app-surface)] ring-1 ring-[var(--phoenix-border)]">
-				<div className="text-sm font-semibold" style={{ color: "var(--phoenix-text)" }}>
+				<div
+					className="text-sm font-semibold"
+					style={{ color: "var(--phoenix-text)" }}
+				>
 					Function Runner
 				</div>
-				<div className="mt-2 text-xs" style={{ color: "var(--phoenix-text-muted)" }}>
-					The function runner is disabled for this deployment. You can browse the API
-					documentation but cannot invoke functions from this site.
+				<div
+					className="mt-2 text-xs"
+					style={{ color: "var(--phoenix-text-muted)" }}
+				>
+					The function runner is disabled for this deployment. You can browse
+					the API documentation but cannot invoke functions from this site.
 				</div>
 			</div>
 		);
@@ -413,7 +417,8 @@ function RunnerPanel({
 				: (result.json.errorMessage ?? result.json.message ?? result.json);
 			setResponse(prettyJson(value));
 			setStatusLine(
-				`${ok ? "Success" : "Error"} • HTTP ${result.httpStatus}${result.durationMs ? ` • ${result.durationMs}ms` : ""
+				`${ok ? "Success" : "Error"} • HTTP ${result.httpStatus}${
+					result.durationMs ? ` • ${result.durationMs}ms` : ""
 				}`,
 			);
 		} catch (err) {
@@ -439,19 +444,9 @@ function RunnerPanel({
 						</span>
 					) : null}
 					<div className="font-mono text-xs truncate text-[var(--phoenix-text)]">
-						{fn.identifier}
+						{displayIdentifier(fn.identifier)}
 					</div>
 				</div>
-				{docs?.summary ? (
-					<div className="mt-2 text-xs text-[var(--phoenix-text-muted)]">
-						{docs.summary}
-					</div>
-				) : null}
-				{docs?.detailsMarkdown ? (
-					<div className="mt-2 text-xs whitespace-pre-wrap text-[var(--phoenix-text-dim)]">
-						{docs.detailsMarkdown}
-					</div>
-				) : null}
 			</div>
 
 			<div className="rounded-xl p-3 bg-[var(--phoenix-app-surface)] ring-1 ring-[var(--phoenix-border)] space-y-3">

@@ -4,10 +4,7 @@
  */
 
 import { Fragment, type ReactNode } from "react";
-import type {
-	ConvexModule,
-	ParsedFunctionSpec,
-} from "./function-spec.js";
+import type { ConvexModule, ParsedFunctionSpec } from "./function-spec.js";
 
 export interface PageProps {
 	title: string;
@@ -132,9 +129,7 @@ function indent(depth: number): string {
 	return "  ".repeat(depth);
 }
 
-function asValidatorObject(
-	validator: unknown,
-): Record<string, unknown> | null {
+function asValidatorObject(validator: unknown): Record<string, unknown> | null {
 	if (!validator || typeof validator !== "object") return null;
 	return validator as Record<string, unknown>;
 }
@@ -151,16 +146,11 @@ function isObjectValidator(validator: unknown): boolean {
 
 function renderLiteral(value: unknown): ReactNode {
 	if (typeof value === "string") {
-		return (
-			<span style={TOKENS.stringLiteral}>
-				"
-				{value}
-				"
-			</span>
-		);
+		return <span style={TOKENS.stringLiteral}>"{value}"</span>;
 	}
 	if (typeof value === "bigint") return String(value);
-	if (typeof value === "number" || typeof value === "boolean") return String(value);
+	if (typeof value === "number" || typeof value === "boolean")
+		return String(value);
 	if (value == null) {
 		return <span style={TOKENS.keyword}>null</span>;
 	}
@@ -233,11 +223,7 @@ function renderValidatorNode(validator: unknown, depth: number): ReactNode {
 			<>
 				<span style={TOKENS.idType}>Id</span>
 				<span style={TOKENS.punctuation}>{"<"}</span>
-				<span style={TOKENS.stringLiteral}>
-					"
-					{tableName}
-					"
-				</span>
+				<span style={TOKENS.stringLiteral}>"{tableName}"</span>
 				<span style={TOKENS.punctuation}>{">"}</span>
 			</>
 		);
@@ -269,7 +255,8 @@ function renderValidatorNode(validator: unknown, depth: number): ReactNode {
 			seen.set(signature, nextCount);
 			return { member, key: `${signature}:${nextCount}` };
 		});
-		const vertical = members.length > 3 || members.some((member) => isObjectValidator(member));
+		const vertical =
+			members.length > 3 || members.some((member) => isObjectValidator(member));
 		if (!vertical) {
 			return (
 				<>
@@ -876,7 +863,7 @@ export function ModulePage({
 											className="font-mono text-sm font-semibold"
 											style={{ color: "var(--phoenix-text)" }}
 										>
-											{fn.identifier}
+											{fn.identifier.replace(/\.js:/i, ":")}
 										</span>
 										<button
 											type="button"
@@ -975,7 +962,7 @@ export function ModulePage({
 												data-toc-id={`fn-${fn.identifier.replace(/:/g, "-")}`}
 												className="block rounded-lg px-3 py-1.5 text-xs text-slate-400 hover:text-white transition-colors truncate"
 											>
-												{fn.identifier}
+												{fn.identifier.replace(/\.js:/i, ":")}
 											</a>
 										</li>
 									))}
