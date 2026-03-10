@@ -7,30 +7,70 @@
 import {
 	existsSync,
 	mkdirSync,
+	readFileSync,
 	rmdirSync,
 	rmSync,
 	unlinkSync,
 	writeFileSync,
 } from "node:fs";
 import { tmpdir } from "node:os";
-import { dirname, join } from "node:path";
+import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { execa } from "execa";
+import { marked } from "marked";
 import { renderToStaticMarkup } from "react-dom/server";
-import { extractJsDocs } from "./jsdoc.js";
-import type { ConvexFunctionSpec, ParsedFunctionSpec } from "./function-spec.js";
+import type { ConvexDocCustomization } from "./config.js";
+import type {
+	ConvexFunctionSpec,
+	ParsedFunctionSpec,
+} from "./function-spec.js";
 import { extractHttpRoutes } from "./http-routes.js";
+import { extractJsDocs } from "./jsdoc.js";
 import { IndexPage, ModulePage } from "./pages.js";
-import { formatValidator, getFunctionName, getModuleName } from "./parser.js";
+import {
+	filterSpecByFunctionTypes,
+	formatValidator,
+	getFunctionName,
+	getModuleName,
+} from "./parser.js";
 
 const TAILWIND_INPUT_CSS = `@tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 /* ConvexDoc base */
-html { font-family: Sora, ui-sans-serif, system-ui, -apple-system, Segoe UI, sans-serif; }
+html {
+  font-family: Sora, ui-sans-serif, system-ui, -apple-system, Segoe UI, sans-serif;
+  -webkit-text-size-adjust: 100%;
+  scroll-behavior: smooth;
+}
+body { overflow-x: hidden; }
 code, pre, kbd, samp { font-family: 'JetBrains Mono', 'Fira Code', 'IBM Plex Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; }
 dialog::backdrop { background: rgba(0,0,0,0.7); }
+
+/* Theme scrollbars */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--phoenix-zinc-600) var(--phoenix-zinc-900);
+}
+*::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+*::-webkit-scrollbar-track {
+  background: var(--phoenix-zinc-900);
+}
+*::-webkit-scrollbar-thumb {
+  background: var(--phoenix-zinc-600);
+  border-radius: 4px;
+  border: 2px solid var(--phoenix-zinc-900);
+}
+*::-webkit-scrollbar-thumb:hover {
+  background: var(--phoenix-zinc-500);
+}
+*::-webkit-scrollbar-corner {
+  background: var(--phoenix-zinc-900);
+}
 
 /**
  * Phoenix Macro UI theme: Zinc + Red Zone (https://github.com/JamalLyons/phoenix-macro)
@@ -98,35 +138,6 @@ dialog::backdrop { background: rgba(0,0,0,0.7); }
   background: var(--phoenix-zinc-700);
   color: var(--phoenix-text);
 }
-
-:root.light {
-  --phoenix-glass-bg: rgba(250, 250, 250, 0.75);
-  --phoenix-glass-border: rgba(0, 0, 0, 0.08);
-  --phoenix-glass-highlight: rgba(255, 255, 255, 0.8);
-  --phoenix-app-bg: #fafafa;
-  --phoenix-app-surface: #ffffff;
-  --phoenix-text: #09090b;
-  --phoenix-text-muted: #52525b;
-  --phoenix-text-dim: #71717a;
-  --phoenix-border: rgba(9, 9, 11, 0.14);
-  --phoenix-border-strong: rgba(9, 9, 11, 0.2);
-  --phoenix-input-bg: rgba(9, 9, 11, 0.03);
-  --phoenix-hover-surface: rgba(9, 9, 11, 0.06);
-}
-.light .bg-black\\/30,
-.light .bg-black\\/35,
-.light .bg-black\\/50 {
-  background-color: rgba(9, 9, 11, 0.05) !important;
-}
-.light .ring-white\\/10,
-.light .ring-white\\/15,
-.light .ring-white\\/20 {
-  --tw-ring-color: rgba(9, 9, 11, 0.12) !important;
-}
-.light .text-slate-200 { color: #1f2937 !important; }
-.light .text-slate-300 { color: #374151 !important; }
-.light .text-slate-400 { color: #4b5563 !important; }
-.light .text-white { color: #111827 !important; }
 .convexdoc-input {
   background: var(--phoenix-input-bg);
   color: var(--phoenix-text);
@@ -153,11 +164,21 @@ dialog::backdrop { background: rgba(0,0,0,0.7); }
 .syntax-boolean { color: #3b82f6; }
 .syntax-null { color: #ef4444; }
 .syntax-key { color: #8b5cf6; font-weight: 500; }
-:root.light .syntax-string { color: #059669; }
-:root.light .syntax-number { color: #d97706; }
-:root.light .syntax-boolean { color: #2563eb; }
-:root.light .syntax-null { color: #dc2626; }
-:root.light .syntax-key { color: #7c3aed; }
+
+/* Landing page markdown / prose */
+.convexdoc-prose { color: var(--phoenix-text); }
+.convexdoc-prose h1 { font-family: Sora, sans-serif; font-size: 1.875rem; font-weight: 600; margin-bottom: 0.5rem; }
+.convexdoc-prose h2 { font-family: Sora, sans-serif; font-size: 1.125rem; font-weight: 600; margin-top: 1.5rem; margin-bottom: 0.5rem; color: var(--phoenix-text); }
+.convexdoc-prose h3 { font-size: 1rem; font-weight: 600; margin-top: 1rem; margin-bottom: 0.25rem; }
+.convexdoc-prose p { margin-bottom: 0.75rem; color: var(--phoenix-text-muted); line-height: 1.6; }
+.convexdoc-prose p:last-child { margin-bottom: 0; }
+.convexdoc-prose ul, .convexdoc-prose ol { margin: 0.5rem 0 0.75rem 1.25rem; color: var(--phoenix-text-muted); }
+.convexdoc-prose li { margin-bottom: 0.25rem; }
+.convexdoc-prose a { color: var(--phoenix-red-zone); text-decoration: none; }
+.convexdoc-prose a:hover { text-decoration: underline; }
+.convexdoc-prose code { font-family: ui-monospace, monospace; font-size: 0.875em; padding: 0.15em 0.4em; border-radius: 0.25rem; background: var(--phoenix-app-surface); color: var(--phoenix-text); }
+.convexdoc-prose pre { margin: 0.75rem 0; padding: 1rem; border-radius: 0.5rem; overflow-x: auto; background: var(--phoenix-app-surface); border: 1px solid var(--phoenix-border); }
+.convexdoc-prose pre code { padding: 0; background: none; }
 `;
 
 /** Slug for module name to safe filename (no path separators, no special chars). */
@@ -198,6 +219,117 @@ function formatReturns(fn: ConvexFunctionSpec): string {
 	return fmt === "{}" ? "{ }  // empty object" : fmt;
 }
 
+function buildAccentCss(
+	customization: ConvexDocCustomization | undefined,
+): string {
+	const accent = customization?.theme?.accent?.trim();
+	if (!accent) return "";
+
+	const parsed = hexToRgb(accent);
+	if (!parsed) {
+		return `
+:root {
+  --phoenix-red-zone: ${accent};
+  --phoenix-red-zone-hover: ${accent};
+  --phoenix-red-zone-glow: ${accent};
+  --phoenix-red-zone-gradient-start: ${accent};
+  --phoenix-red-zone-gradient-end: ${accent};
+  --phoenix-red-zone-active-start: ${accent};
+  --phoenix-red-zone-active-end: ${accent};
+}
+`;
+	}
+
+	const hover = rgbToHex(mixRgb(parsed, { r: 0, g: 0, b: 0 }, 0.16));
+	const glow = `rgba(${parsed.r}, ${parsed.g}, ${parsed.b}, 0.35)`;
+	const gradientStart = rgbToHex(
+		mixRgb(parsed, { r: 255, g: 148, b: 60 }, 0.2),
+	);
+	const activeStart = rgbToHex(mixRgb(parsed, { r: 255, g: 255, b: 255 }, 0.1));
+
+	return `
+:root {
+  --phoenix-red-zone: ${accent};
+  --phoenix-red-zone-hover: ${hover};
+  --phoenix-red-zone-glow: ${glow};
+  --phoenix-red-zone-gradient-start: ${gradientStart};
+  --phoenix-red-zone-gradient-end: ${accent};
+  --phoenix-red-zone-active-start: ${activeStart};
+  --phoenix-red-zone-active-end: ${accent};
+}
+`;
+}
+
+function hexToRgb(value: string): { r: number; g: number; b: number } | null {
+	const raw = value.trim().replace(/^#/, "");
+	const normalized =
+		raw.length === 3
+			? raw
+					.split("")
+					.map((ch) => `${ch}${ch}`)
+					.join("")
+			: raw;
+	if (!/^[0-9a-fA-F]{6}$/.test(normalized)) return null;
+	const int = Number.parseInt(normalized, 16);
+	return {
+		r: (int >> 16) & 255,
+		g: (int >> 8) & 255,
+		b: int & 255,
+	};
+}
+
+function rgbToHex(rgb: { r: number; g: number; b: number }): string {
+	const toHex = (n: number) => n.toString(16).padStart(2, "0");
+	return `#${toHex(clampByte(rgb.r))}${toHex(clampByte(rgb.g))}${toHex(clampByte(rgb.b))}`;
+}
+
+function mixRgb(
+	base: { r: number; g: number; b: number },
+	target: { r: number; g: number; b: number },
+	weight: number,
+): { r: number; g: number; b: number } {
+	const w = Math.max(0, Math.min(1, weight));
+	return {
+		r: Math.round(base.r * (1 - w) + target.r * w),
+		g: Math.round(base.g * (1 - w) + target.g * w),
+		b: Math.round(base.b * (1 - w) + target.b * w),
+	};
+}
+
+function clampByte(n: number): number {
+	return Math.max(0, Math.min(255, Math.round(n)));
+}
+
+/**
+ * Load and parse landing page content from a file path (relative to projectDir).
+ * Returns HTML string for .md (via marked) or plaintext (escaped, wrapped in a div). Returns null if file missing or path empty.
+ */
+function loadLandingPageContent(
+	projectDir: string,
+	filePath: string | undefined,
+): string | null {
+	if (!filePath?.trim()) return null;
+	const resolved = resolve(projectDir, filePath.trim());
+	if (!existsSync(resolved)) return null;
+	let raw: string;
+	try {
+		raw = readFileSync(resolved, "utf-8");
+	} catch {
+		return null;
+	}
+	const ext = resolved.toLowerCase().slice(resolved.lastIndexOf("."));
+	if (ext === ".md" || ext === ".markdown") {
+		return marked.parse(raw) as string;
+	}
+	// Plaintext: escape HTML and wrap in a single pre/div for display
+	const escaped = raw
+		.replace(/&/g, "&amp;")
+		.replace(/</g, "&lt;")
+		.replace(/>/g, "&gt;")
+		.replace(/"/g, "&quot;");
+	return `<div class="convexdoc-prose"><pre class="whitespace-pre-wrap text-sm" style="color: var(--phoenix-text-muted);">${escaped}</pre></div>`;
+}
+
 async function bundleClientApp(outputDir: string): Promise<void> {
 	const moduleDir = dirname(fileURLToPath(import.meta.url));
 	const tsxEntry = join(moduleDir, "client-app.tsx");
@@ -229,6 +361,9 @@ export async function generateDocs(
 		httpActionDeployUrl?: string;
 		deploymentEnv?: "dev" | "prod";
 		deploymentUrl?: string;
+		customization?: ConvexDocCustomization;
+		/** When true, the function runner is disabled (manifest + static site). */
+		disableFunctionRunner?: boolean;
 	},
 ): Promise<void> {
 	if (existsSync(outputDir)) {
@@ -237,12 +372,17 @@ export async function generateDocs(
 	mkdirSync(outputDir, { recursive: true });
 
 	const baseHref = ""; // same dir as index
-	const moduleSlugs = buildModuleSlugs(spec);
+	const customization = options?.customization ?? {};
+	const filteredSpec = filterSpecByFunctionTypes(
+		spec,
+		customization.excludeFunctionTypes ?? [],
+	);
+	const moduleSlugs = buildModuleSlugs(filteredSpec);
 
 	// Build the React client runtime.
 	await bundleClientApp(outputDir);
 
-	// JSDoc enrichment (best-effort)
+	// JSDoc enrichment (best-effort; uses full spec for lookup)
 	const docsByIdentifier = await extractJsDocs(projectDir, spec);
 	const httpRoutes = await extractHttpRoutes(projectDir, spec);
 
@@ -252,10 +392,11 @@ export async function generateDocs(
 			options?.httpActionDeployUrl ?? "http://localhost:3218",
 		deploymentEnv: options?.deploymentEnv ?? "dev",
 		deploymentUrl: options?.deploymentUrl,
+		functionRunnerDisabled: options?.disableFunctionRunner === true,
 	};
 
 	// Write manifest scaffold (HTTP routes merged later)
-	const functions = spec.raw.map((fn) => {
+	const functions = filteredSpec.raw.map((fn) => {
 		const moduleName = getModuleName(fn.identifier);
 		const moduleSlug = moduleSlugs.get(moduleName) ?? moduleToSlug(moduleName);
 		const anchor = `fn-${fn.identifier.replace(/:/g, "-")}`;
@@ -276,8 +417,9 @@ export async function generateDocs(
 
 	const manifest = {
 		buildInfo,
-		summary: spec.summary,
-		modules: spec.modules.map((m) => ({
+		customization,
+		summary: filteredSpec.summary,
+		modules: filteredSpec.modules.map((m) => ({
 			name: m.name,
 			displayName: moduleDisplayName(m.name),
 			slug: moduleSlugs.get(m.name) ?? moduleToSlug(m.name),
@@ -293,22 +435,28 @@ export async function generateDocs(
 		"utf-8",
 	);
 
-	// Index page
+	// Index page: optional custom landing content from file
+	const landingPageHtml = loadLandingPageContent(
+		projectDir,
+		customization.landingPage,
+	);
 	const indexHtml =
 		"<!DOCTYPE html>\n" +
 		renderToStaticMarkup(
 			<IndexPage
-				spec={spec}
+				spec={filteredSpec}
 				title="API Overview"
 				baseHref={baseHref}
-				nav={{ spec, moduleSlugs }}
+				nav={{ spec: filteredSpec, moduleSlugs }}
 				buildInfo={buildInfo}
+				customization={customization}
+				landingPageHtml={landingPageHtml}
 			/>,
 		);
 	writeFileSync(join(outputDir, "index.html"), indexHtml, "utf-8");
 
 	// Per-module pages
-	for (const mod of spec.modules) {
+	for (const mod of filteredSpec.modules) {
 		const slug = moduleSlugs.get(mod.name) ?? moduleToSlug(mod.name);
 		const filename = `${slug}.html`;
 		const pageHtml =
@@ -320,8 +468,9 @@ export async function generateDocs(
 					formatReturns={formatReturns}
 					title={mod.name}
 					baseHref={baseHref}
-					nav={{ spec, moduleSlugs, activeModuleName: mod.name }}
+					nav={{ spec: filteredSpec, moduleSlugs, activeModuleName: mod.name }}
 					buildInfo={buildInfo}
+					customization={customization}
 				/>,
 			);
 		writeFileSync(join(outputDir, filename), pageHtml, "utf-8");
@@ -350,7 +499,11 @@ module.exports = {
 };
 `;
 	writeFileSync(tailwindConfigPath, tailwindConfig, "utf-8");
-	writeFileSync(inputCssPath, TAILWIND_INPUT_CSS, "utf-8");
+	writeFileSync(
+		inputCssPath,
+		`${TAILWIND_INPUT_CSS}\n${buildAccentCss(customization)}`,
+		"utf-8",
+	);
 
 	try {
 		await execa(
@@ -364,6 +517,7 @@ module.exports = {
 				outputCssPath,
 				"-c",
 				tailwindConfigPath,
+				"--minify",
 			],
 			{ env: { ...process.env } },
 		);

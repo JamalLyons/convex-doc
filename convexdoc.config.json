@@ -5,5 +5,124 @@
 	"deploymentUrl": "https://fine-raven-957.convex.cloud",
 	"httpActionDeployUrl": "https://fine-raven-957.convex.site",
 	"verboseLogs": false,
-	"deploymentEnv": "dev"
+	"deploymentEnv": "dev",
+	"functionRunnerDisabled": false,
+	"customization": {
+		"landingPage": "./landing.md",
+		"theme": {
+			"accent": "#ef4444"
+		},
+		"modules": {
+			"tasks": {
+				"description": "Task management: queries, mutations, actions, and HTTP handlers for tasks with status, assignees, due dates, and comments.",
+				"functions": {
+					"getTask": {
+						"description": "Fetch a single task by ID."
+					},
+					"listTasks": {
+						"description": "List tasks with optional status filter and limit."
+					},
+					"listTasksByStatus": {
+						"description": "List all tasks with the given status (todo, in_progress, done)."
+					},
+					"listTasksByAssignee": {
+						"description": "List all tasks assigned to a user."
+					},
+					"getTasksDueBefore": {
+						"description": "List tasks with a due date before the given timestamp."
+					},
+					"listDoneTasks": {
+						"description": "List all tasks marked as done."
+					},
+					"searchTasks": {
+						"description": "Search tasks by title substring."
+					},
+					"getTaskWithComments": {
+						"description": "Fetch a task and its comments."
+					},
+					"getTasksInList": {
+						"description": "List all tasks in a given list."
+					},
+					"createTask": {
+						"description": "Create a new task with optional title, description, status, assignee, due date, priority, and list."
+					},
+					"updateTask": {
+						"description": "Update a task's fields (title, description, done, status, assignee, due date, priority)."
+					},
+					"deleteTask": {
+						"description": "Delete a task by ID."
+					},
+					"toggleDone": {
+						"description": "Toggle a task's done flag."
+					},
+					"setStatus": {
+						"description": "Set a task's status (todo, in_progress, done)."
+					},
+					"assignTask": {
+						"description": "Assign a task to a user."
+					},
+					"setDueDate": {
+						"description": "Set a task's due date (timestamp)."
+					},
+					"addComment": {
+						"description": "Add a comment to a task."
+					},
+					"runTask": {
+						"description": "Run a task with optional delay (default 100ms)."
+					},
+					"notifyTaskAssigned": {
+						"description": "Simulate sending a notification when a task is assigned."
+					},
+					"syncTasksFromExternal": {
+						"description": "Simulate syncing tasks from an external URL."
+					},
+					"processTaskBatch": {
+						"description": "Process a batch of task IDs (simulated)."
+					},
+					"handleTaskRequest": {
+						"description": "HTTP handler for GET /task (returns a greeting)."
+					},
+					"handleTaskOptions": {
+						"description": "CORS preflight handler for the task endpoint."
+					},
+					"helperInternalQuery": {
+						"description": "Internal query helper (for testing doc exclusion)."
+					},
+					"helperInternalMutation": {
+						"description": "Internal mutation helper (for testing doc exclusion)."
+					},
+					"helperInternalAction": {
+						"description": "Internal action helper (for testing doc exclusion)."
+					}
+				}
+			},
+			"lists": {
+				"description": "Task list management: create, rename, delete, and query lists.",
+				"functions": {
+					"listLists": {
+						"description": "List all lists, ordered by creation."
+					},
+					"getList": {
+						"description": "Fetch a single list by ID."
+					},
+					"getListByName": {
+						"description": "Find a list by exact name."
+					},
+					"createList": {
+						"description": "Create a new list with a name."
+					},
+					"renameList": {
+						"description": "Rename a list."
+					},
+					"deleteList": {
+						"description": "Delete a list by ID."
+					}
+				}
+			},
+			"http": {
+				"description": "HTTP router for task-related endpoints (e.g. GET /task, OPTIONS)."
+			}
+		},
+		"hideConvexDocsLinks": true
+	}
 }

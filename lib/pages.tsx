@@ -26,11 +26,27 @@ export interface PageProps {
 		defaultHttpActionDeployUrl?: string;
 		deploymentEnv?: "dev" | "prod";
 		deploymentUrl?: string;
+		functionRunnerDisabled?: boolean;
+	};
+	customization?: {
+		theme?: {
+			accent?: string;
+		};
+		modules?: Record<
+			string,
+			{
+				description?: string;
+				functions?: Record<string, { description?: string }>;
+			}
+		>;
+		hideConvexDocsLinks?: boolean;
 	};
 }
 
 export interface IndexPageProps extends PageProps {
 	spec: ParsedFunctionSpec;
+	/** Pre-rendered HTML from landing page file (markdown or plaintext). */
+	landingPageHtml?: string | null;
 }
 
 export interface ModulePageProps extends PageProps {
@@ -117,9 +133,7 @@ function Layout({
 	const modules = nav.spec.modules;
 
 	const env =
-		buildInfo?.deploymentEnv === "prod"
-			? ("prod" as const)
-			: ("dev" as const);
+		buildInfo?.deploymentEnv === "prod" ? ("prod" as const) : ("dev" as const);
 	const envLabel = env === "prod" ? "Production" : "Development";
 	const envClass =
 		env === "prod"
@@ -140,7 +154,7 @@ function Layout({
 		<html lang="en" className="h-full scroll-pt-24">
 			<head>
 				<meta charSet="utf-8" />
-				<meta name="viewport" content="width=device-width, initial-scale=1" />
+				<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
 				<title>{`${title} — ConvexDoc`}</title>
 				<link rel="stylesheet" href={`${baseHref}styles.css`} />
 				<link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -156,10 +170,12 @@ function Layout({
 				<script type="module" src={`${baseHref}app.js`} defer />
 			</head>
 			<body
-				className="min-h-screen antialiased flex flex-col"
+				className="min-h-screen antialiased flex flex-col w-full min-w-0"
 				style={{
 					backgroundColor: "var(--phoenix-app-bg)",
 					color: "var(--phoenix-text)",
+					paddingLeft: "env(safe-area-inset-left)",
+					paddingRight: "env(safe-area-inset-right)",
 				}}
 			>
 				<div className="pointer-events-none fixed inset-0 -z-10">
@@ -167,7 +183,7 @@ function Layout({
 					<div className="absolute inset-0 opacity-[0.08] bg-[url('data:image/svg+xml,%3Csvg%20xmlns=%22http://www.w3.org/2000/svg%22%20width=%22120%22%20height=%22120%22%20viewBox=%220%200%20120%20120%22%3E%3Cfilter%20id=%22n%22%3E%3CfeTurbulence%20type=%22fractalNoise%22%20baseFrequency=%220.8%22%20numOctaves=%222%22%20stitchTiles=%22stitch%22/%3E%3C/filter%3E%3Crect%20width=%22120%22%20height=%22120%22%20filter=%22url(%23n)%22%20opacity=%220.35%22/%3E%3C/svg%3E')]" />
 				</div>
 
-				<header className="sticky top-0 z-20 phoenix-glass">
+				<header className="sticky top-0 z-20 phoenix-glass pt-[env(safe-area-inset-top)]">
 					<div className="mx-auto max-w-[1280px] px-4 sm:px-6">
 						<div className="flex h-16 items-center gap-3">
 							<a
@@ -193,12 +209,26 @@ function Layout({
 							<button
 								type="button"
 								id="convexdoc-search-open"
-								className="group hidden sm:flex flex-1 items-center justify-between rounded-xl bg-white/5 px-3 py-2 text-left ring-1 ring-white/10 hover:bg-white/7.5"
+								className="group hidden sm:flex flex-1 items-center justify-between rounded-xl px-3 py-2 text-left transition-colors phoenix-glass hover:bg-white/5"
+								style={{
+									backgroundColor: "var(--phoenix-input-bg)",
+									borderColor: "var(--phoenix-border)",
+								}}
 							>
-								<span className="text-sm text-slate-300 group-hover:text-slate-200">
+								<span
+									className="text-sm group-hover:opacity-90"
+									style={{ color: "var(--phoenix-text)" }}
+								>
 									Search modules & functions…
 								</span>
-								<span className="inline-flex items-center gap-1 rounded-md bg-black/30 px-2 py-1 text-xs text-slate-300 ring-1 ring-white/10">
+								<span
+									className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs ring-1"
+									style={{
+										backgroundColor: "var(--phoenix-app-surface)",
+										color: "var(--phoenix-text-muted)",
+										borderColor: "var(--phoenix-border)",
+									}}
+								>
 									<span className="font-mono">⌘</span>
 									<span className="font-mono">K</span>
 								</span>
@@ -224,21 +254,12 @@ function Layout({
 									</div>
 								)}
 							</div>
-
-							<button
-								type="button"
-								id="theme-toggle"
-								className="ml-2 inline-flex items-center justify-center rounded-lg bg-white/5 p-2 text-sm text-slate-300 ring-1 ring-white/10 hover:bg-white/7.5 hover:text-white"
-								aria-label="Toggle light/dark mode"
-							>
-								🌙
-							</button>
 						</div>
 					</div>
 				</header>
 
-				<div className="mx-auto max-w-[1280px] px-4 sm:px-6 flex-1 w-full">
-					<div className="grid grid-cols-1 lg:grid-cols-[280px_minmax(0,1fr)] gap-8 py-8">
+				<div className="mx-auto max-w-[1280px] px-4 sm:px-6 flex-1 w-full min-w-0 pb-[env(safe-area-inset-bottom)]">
+					<div className="grid grid-cols-1 lg:grid-cols-[280px_minmax(0,1fr)] gap-6 sm:gap-8 py-6 sm:py-8">
 						<aside className="hidden lg:block">
 							<div className="sticky top-24">
 								<div
@@ -267,10 +288,11 @@ function Layout({
 													<li key={mod.name}>
 														<a
 															href={baseHref ? `${baseHref}${href}` : href}
-															className={`flex items-center justify-between gap-3 rounded-xl px-3 py-2 text-sm ring-1 ring-inset ${active
-																? "bg-white/10 text-white ring-white/15"
-																: "text-slate-300 ring-transparent hover:bg-white/5 hover:text-white"
-																}`}
+															className={`flex items-center justify-between gap-3 rounded-xl px-3 py-2 text-sm ring-1 ring-inset ${
+																active
+																	? "bg-white/10 text-white ring-white/15"
+																	: "text-slate-300 ring-transparent hover:bg-white/5 hover:text-white"
+															}`}
 														>
 															<span className="truncate">
 																{moduleDisplayName(mod.name)}
@@ -319,11 +341,25 @@ function Layout({
 					id="convexdoc-search"
 					className="backdrop:bg-black/70 backdrop:backdrop-blur-sm bg-transparent p-0"
 				>
-					<div className="mx-auto mt-24 w-[min(720px,calc(100vw-2rem))] rounded-2xl bg-slate-950 ring-1 ring-white/15 shadow-[0_30px_90px_rgba(0,0,0,0.7)] overflow-hidden">
-						<div className="border-b border-white/10 p-3">
+					<div
+						className="mx-auto mt-24 w-[min(720px,calc(100vw-2rem))] rounded-2xl overflow-hidden phoenix-glass shadow-[0_30px_90px_rgba(0,0,0,0.5)]"
+						style={{
+							borderColor: "var(--phoenix-border-strong)",
+							borderTopWidth: "2px",
+							borderTopColor: "var(--phoenix-red-zone)",
+						}}
+					>
+						<div
+							className="border-b p-3"
+							style={{ borderColor: "var(--phoenix-border)" }}
+						>
 							<input
 								id="convexdoc-search-input"
-								className="w-full rounded-xl bg-white/5 px-3 py-2 text-sm text-white placeholder:text-slate-400 ring-1 ring-white/10 focus:outline-none focus:ring-2 focus:ring-sky-400/40"
+								className="convexdoc-input w-full rounded-xl px-3 py-2 text-sm"
+								style={{
+									backgroundColor: "var(--phoenix-input-bg)",
+									color: "var(--phoenix-text)",
+								}}
 								placeholder="Search… (type function identifier or name)"
 								autoComplete="off"
 							/>
@@ -331,8 +367,12 @@ function Layout({
 						<div
 							id="convexdoc-search-results"
 							className="max-h-[60vh] overflow-auto p-2"
+							style={{ backgroundColor: "var(--phoenix-app-surface)" }}
 						>
-							<div className="px-2 py-6 text-sm text-slate-400">
+							<div
+								className="px-2 py-6 text-sm"
+								style={{ color: "var(--phoenix-text-muted)" }}
+							>
 								Type to search functions.
 							</div>
 						</div>
@@ -349,57 +389,101 @@ export function IndexPage({
 	baseHref = "",
 	nav,
 	buildInfo,
+	customization,
+	landingPageHtml,
 }: IndexPageProps) {
 	const { summary, modules } = spec;
 	return (
 		<Layout title={title} baseHref={baseHref} nav={nav} buildInfo={buildInfo}>
-			<section className="mb-10">
-				<h1 className="font-[Sora] text-3xl sm:text-4xl font-semibold tracking-tight">
-					API Overview
-				</h1>
-				<p className="mt-2 text-slate-300 max-w-2xl">
-					Premium, auto-generated docs for your Convex deployment—with
-					interactive tools when served locally.
-				</p>
-			</section>
+			{landingPageHtml ? (
+				<section
+					className="mb-10 convexdoc-prose max-w-3xl"
+					// biome-ignore lint/security/noDangerouslySetInnerHtml: build-time content from config file
+					dangerouslySetInnerHTML={{ __html: landingPageHtml }}
+				/>
+			) : (
+				<section className="mb-10">
+					<h1 className="font-[Sora] text-3xl sm:text-4xl font-semibold tracking-tight">
+						API Overview
+					</h1>
+					<p className="mt-2 text-slate-300 max-w-2xl">
+						Auto-generated docs for your Convex deployment—interactive when
+						served via{" "}
+						<code className="font-mono text-slate-200">convexdoc serve</code>.
+					</p>
+				</section>
+			)}
 
 			<section className="mb-10">
-				<h2 className="font-[Sora] text-lg font-semibold text-slate-100 mb-4">
-					Summary
-				</h2>
-				<div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-					<div className="rounded-2xl bg-white/5 ring-1 ring-white/10 p-4">
-						<div className="text-2xl font-semibold text-white">
-							{summary.total}
-						</div>
-						<div className="text-xs text-slate-400 mt-1">Total</div>
-					</div>
-					<div className="rounded-2xl bg-white/5 ring-1 ring-white/10 p-4">
-						<div className="text-2xl font-semibold text-sky-200">
-							{summary.queries}
-						</div>
-						<div className="text-xs text-slate-400 mt-1">Queries</div>
-					</div>
-					<div className="rounded-2xl bg-white/5 ring-1 ring-white/10 p-4">
-						<div className="text-2xl font-semibold text-emerald-200">
-							{summary.mutations}
-						</div>
-						<div className="text-xs text-slate-400 mt-1">Mutations</div>
-					</div>
-					<div className="rounded-2xl bg-white/5 ring-1 ring-white/10 p-4">
-						<div className="text-2xl font-semibold text-fuchsia-200">
-							{summary.actions}
-						</div>
-						<div className="text-xs text-slate-400 mt-1">Actions</div>
-					</div>
-					{summary.httpActions > 0 ? (
-						<div className="rounded-2xl bg-white/5 ring-1 ring-white/10 p-4">
-							<div className="text-2xl font-semibold text-cyan-200">
-								{summary.httpActions}
+				<div
+					className="rounded-2xl phoenix-glass p-5"
+					style={{ borderTop: "2px solid var(--phoenix-red-zone)" }}
+				>
+					<h2
+						className="font-[Sora] text-sm font-semibold mb-4"
+						style={{ color: "var(--phoenix-text)" }}
+					>
+						Function summary
+					</h2>
+					<div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-5 gap-3">
+						<div className="rounded-xl p-3 ring-1 ring-white/10 bg-white/5">
+							<div className="text-2xl font-semibold text-white">
+								{summary.total}
 							</div>
-							<div className="text-xs text-slate-400 mt-1">HTTP Actions</div>
+							<div
+								className="text-xs mt-1"
+								style={{ color: "var(--phoenix-text-muted)" }}
+							>
+								Total
+							</div>
 						</div>
-					) : null}
+						<div className="rounded-xl p-3 ring-1 ring-sky-400/20 bg-sky-500/10">
+							<div className="text-2xl font-semibold text-sky-200">
+								{summary.queries}
+							</div>
+							<div
+								className="text-xs mt-1"
+								style={{ color: "var(--phoenix-text-muted)" }}
+							>
+								Queries
+							</div>
+						</div>
+						<div className="rounded-xl p-3 ring-1 ring-emerald-400/20 bg-emerald-500/10">
+							<div className="text-2xl font-semibold text-emerald-200">
+								{summary.mutations}
+							</div>
+							<div
+								className="text-xs mt-1"
+								style={{ color: "var(--phoenix-text-muted)" }}
+							>
+								Mutations
+							</div>
+						</div>
+						<div className="rounded-xl p-3 ring-1 ring-red-500/20 bg-red-500/10">
+							<div className="text-2xl font-semibold text-fuchsia-200">
+								{summary.actions}
+							</div>
+							<div
+								className="text-xs mt-1"
+								style={{ color: "var(--phoenix-text-muted)" }}
+							>
+								Actions
+							</div>
+						</div>
+						{summary.httpActions > 0 ? (
+							<div className="rounded-xl p-3 ring-1 ring-cyan-400/20 bg-cyan-500/10">
+								<div className="text-2xl font-semibold text-cyan-200">
+									{summary.httpActions}
+								</div>
+								<div
+									className="text-xs mt-1"
+									style={{ color: "var(--phoenix-text-muted)" }}
+								>
+									HTTP Actions
+								</div>
+							</div>
+						) : null}
+					</div>
 				</div>
 			</section>
 
@@ -411,6 +495,8 @@ export function IndexPage({
 					{modules.map((mod) => {
 						const slug = nav.moduleSlugs.get(mod.name) ?? mod.name;
 						const href = slug === "index" ? "index.html" : `${slug}.html`;
+						const moduleDescription =
+							customization?.modules?.[mod.name]?.description;
 						return (
 							<li key={mod.name}>
 								<a
@@ -425,9 +511,11 @@ export function IndexPage({
 											{mod.functions.length} fn
 										</span>
 									</div>
-									<span className="mt-2 block text-xs text-slate-400">
-										Open module documentation and interactive tools.
-									</span>
+									{moduleDescription ? (
+										<span className="mt-2 block text-xs text-slate-400">
+											{moduleDescription}
+										</span>
+									) : null}
 								</a>
 							</li>
 						);
@@ -446,10 +534,17 @@ export function ModulePage({
 	baseHref = "",
 	nav,
 	buildInfo,
+	customization,
 }: ModulePageProps) {
 	const indexHref = baseHref ? `${baseHref}index.html` : "index.html";
 	return (
-		<Layout title={title} baseHref={baseHref} nav={nav} buildInfo={buildInfo}>
+		<Layout
+			title={title}
+			baseHref={baseHref}
+			nav={nav}
+			buildInfo={buildInfo}
+			customization={customization}
+		>
 			<nav className="text-xs text-slate-400 mb-4">
 				<a href={indexHref} className="hover:text-slate-200">
 					Overview
@@ -458,31 +553,25 @@ export function ModulePage({
 				<span className="text-slate-200">{moduleDisplayName(module.name)}</span>
 			</nav>
 
-			<div className="flex flex-wrap items-end justify-between gap-4 mb-8">
-				<div>
-					<h1 className="font-[Sora] text-3xl sm:text-4xl font-semibold tracking-tight">
-						{moduleDisplayName(module.name)}
-					</h1>
-					<p className="mt-2 text-slate-300">
-						{module.functions.length} function
-						{module.functions.length === 1 ? "" : "s"} in this module.
-					</p>
-				</div>
-				<div className="flex items-center gap-2">
-					<button
-						type="button"
-						id="convexdoc-open-runner-help"
-						className="inline-flex items-center rounded-xl bg-white/5 px-3 py-2 text-sm text-slate-200 ring-1 ring-white/10 hover:bg-white/7.5"
-					>
-						Local runner info
-					</button>
-				</div>
+			<div className="mb-8">
+				<h1 className="font-[Sora] text-3xl sm:text-4xl font-semibold tracking-tight">
+					{moduleDisplayName(module.name)}
+				</h1>
 			</div>
 
-			<p className="mb-6 text-xs text-slate-400">
-				Interactive tools require JavaScript and are fully enabled when served
-				via <code className="font-mono text-slate-200">convexdoc serve</code>.
-			</p>
+			{(() => {
+				const moduleDescription =
+					customization?.modules?.[module.name]?.description;
+				return moduleDescription ? (
+					<p className="mb-6 text-xs text-slate-400">{moduleDescription}</p>
+				) : (
+					<p className="mb-6 text-xs text-slate-400">
+						Interactive tools require JavaScript and are fully enabled when
+						served via{" "}
+						<code className="font-mono text-slate-200">convexdoc serve</code>.
+					</p>
+				);
+			})()}
 
 			<div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_380px] gap-6">
 				<div className="min-w-0">
@@ -491,6 +580,12 @@ export function ModulePage({
 							const argsStr = formatArgs(fn);
 							const returnsStr = formatReturns(fn);
 							const docsLink = docsLinkForFunctionType(fn.functionType);
+							const functionName = fn.identifier.includes(":")
+								? fn.identifier.slice(fn.identifier.indexOf(":") + 1)
+								: fn.identifier;
+							const functionDescription =
+								customization?.modules?.[module.name]?.functions?.[functionName]
+									?.description;
 							return (
 								<li
 									key={fn.identifier}
@@ -524,6 +619,11 @@ export function ModulePage({
 											Run
 										</button>
 									</div>
+									{functionDescription ? (
+										<p className="mt-2 mb-3 text-xs text-slate-400">
+											{functionDescription}
+										</p>
+									) : null}
 
 									<div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-4">
 										<div
@@ -570,7 +670,7 @@ export function ModulePage({
 										</div>
 									</div>
 
-									{docsLink ? (
+									{docsLink && !customization?.hideConvexDocsLinks ? (
 										<div className="mt-3 text-[11px] text-slate-400">
 											<a
 												href={docsLink.href}
@@ -591,25 +691,6 @@ export function ModulePage({
 
 				<aside className="mt-8">
 					<div className="sticky top-24 space-y-6">
-						<div className="rounded-2xl phoenix-glass overflow-hidden">
-							<div className="px-4 py-3 border-b border-white/10">
-								<div className="text-xs font-semibold uppercase tracking-wide" style={{ color: "var(--phoenix-text)" }}>
-									Functions in this module
-								</div>
-							</div>
-							<div className="max-h-[30vh] overflow-auto p-2">
-								<ul className="space-y-1">
-									{module.functions.map(fn => (
-										<li key={fn.identifier}>
-											<a href={`#fn-${fn.identifier.replace(/:/g, "-")}`} data-toc-id={`fn-${fn.identifier.replace(/:/g, "-")}`} className="block rounded-lg px-3 py-1.5 text-xs text-slate-400 hover:text-white transition-colors truncate">
-												{fn.identifier}
-											</a>
-										</li>
-									))}
-								</ul>
-							</div>
-						</div>
-
 						<div
 							id="convexdoc-runner-panel"
 							className="rounded-2xl phoenix-glass overflow-hidden"
@@ -644,38 +725,44 @@ export function ModulePage({
 								</div>
 							</div>
 						</div>
+
+						<details
+							className="rounded-2xl phoenix-glass overflow-hidden group"
+							open={module.functions.length <= 10}
+						>
+							<summary className="px-4 py-3 border-b border-white/10 cursor-pointer list-none select-none [&::-webkit-details-marker]:hidden flex items-center justify-between gap-2">
+								<div
+									className="text-xs font-semibold uppercase tracking-wide"
+									style={{ color: "var(--phoenix-text)" }}
+								>
+									Functions in this module
+								</div>
+								<span
+									className="text-slate-500 transition-transform group-open:rotate-180"
+									aria-hidden
+								>
+									▼
+								</span>
+							</summary>
+							<div className="max-h-[30vh] overflow-auto p-2">
+								<ul className="space-y-1">
+									{module.functions.map((fn) => (
+										<li key={fn.identifier}>
+											<a
+												href={`#fn-${fn.identifier.replace(/:/g, "-")}`}
+												data-toc-id={`fn-${fn.identifier.replace(/:/g, "-")}`}
+												className="block rounded-lg px-3 py-1.5 text-xs text-slate-400 hover:text-white transition-colors truncate"
+											>
+												{fn.identifier}
+											</a>
+										</li>
+									))}
+								</ul>
+							</div>
+						</details>
 					</div>
 				</aside>
 			</div>
-
-			<dialog
-				id="convexdoc-runner-help"
-				className="backdrop:bg-black/70 backdrop:backdrop-blur-sm bg-transparent p-0"
-			>
-				<div className="mx-auto mt-24 w-[min(720px,calc(100vw-2rem))] rounded-2xl bg-slate-950 ring-1 ring-white/15 shadow-[0_30px_90px_rgba(0,0,0,0.7)] overflow-hidden">
-					<div className="border-b border-white/10 px-4 py-3 flex items-center justify-between">
-						<div className="text-sm font-semibold text-white">Local runner</div>
-						<button
-							type="button"
-							className="rounded-lg bg-white/5 px-3 py-1.5 text-xs text-slate-200 ring-1 ring-white/10 hover:bg-white/7.5"
-							data-convexdoc-close="convexdoc-runner-help"
-						>
-							Close
-						</button>
-					</div>
-					<div className="p-4 text-sm text-slate-300 space-y-3">
-						<p>
-							To enable interactive execution (queries/mutations/actions), serve
-							these docs with{" "}
-							<code className="font-mono text-slate-200">convexdoc serve</code>.
-						</p>
-						<p className="text-xs text-slate-400">
-							The static HTML is safe to publish; the runner is a localhost-only
-							proxy so secrets never ship in the generated output.
-						</p>
-					</div>
-				</div>
-			</dialog>
 		</Layout>
 	);
 }

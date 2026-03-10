@@ -106,7 +106,10 @@ export async function extractHttpRoutes(
 				join(dirname(file), source).replace(/\\/g, "/"),
 			);
 
-			if (stmt.importClause.namedBindings && ts.isNamedImports(stmt.importClause.namedBindings)) {
+			if (
+				stmt.importClause.namedBindings &&
+				ts.isNamedImports(stmt.importClause.namedBindings)
+			) {
 				for (const specifier of stmt.importClause.namedBindings.elements) {
 					const localName = specifier.name.text;
 					const importedName = specifier.propertyName?.text ?? localName;

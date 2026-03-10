@@ -44,6 +44,8 @@ export async function serveDocsSite(opts: {
 	verboseLogs?: boolean;
 	deploymentUrl?: string;
 	adminKey?: string;
+	/** When true, /__convexdoc/run will not process requests and will log that the operation is disabled. */
+	disableFunctionRunner?: boolean;
 }): Promise<void> {
 	const {
 		docsDir,
@@ -51,6 +53,7 @@ export async function serveDocsSite(opts: {
 		verboseLogs = false,
 		deploymentUrl,
 		adminKey,
+		disableFunctionRunner = false,
 	} = opts;
 
 	const server = createServer(async (req, res) => {
@@ -61,9 +64,7 @@ export async function serveDocsSite(opts: {
 
 		const log = (message: string) => {
 			if (!verboseLogs) return;
-			console.log(
-				chalk.dim(`[convexdoc:${requestId}] `) + message,
-			);
+			console.log(chalk.dim(`[convexdoc:${requestId}] `) + message);
 		};
 
 		const logEnd = (status: number) => {
@@ -105,6 +106,21 @@ export async function serveDocsSite(opts: {
 
 			// Runner endpoint
 			if (pathname === "/__convexdoc/run" && req.method === "POST") {
+				if (disableFunctionRunner) {
+					console.log(
+						chalk.yellow("[convexdoc] Function runner is disabled; request rejected."),
+					);
+					res.statusCode = 403;
+					res.setHeader("content-type", "application/json; charset=utf-8");
+					res.end(
+						JSON.stringify({
+							status: "error",
+							errorMessage: "Function runner is disabled.",
+						}),
+					);
+					logEnd(403);
+					return;
+				}
 				const body = (await readJsonBody(
 					req,
 				)) as Partial<RunRequestBody> | null;

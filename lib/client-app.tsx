@@ -32,6 +32,8 @@ interface ManifestShape {
 	httpRoutes?: HttpRoute[];
 	buildInfo?: {
 		defaultHttpActionDeployUrl?: string;
+		/** When true, the function runner is disabled (e.g. for public deployments). */
+		functionRunnerDisabled?: boolean;
 	};
 }
 
@@ -44,7 +46,6 @@ interface RunResult {
 const MANIFEST_URL = "./convexdoc.manifest.json";
 const STORAGE = {
 	token: "convexdoc:bearerToken",
-	lightMode: "convexdoc:lightMode",
 	deployUrl: "convexdoc:deployUrl",
 };
 
@@ -94,9 +95,16 @@ function formatValidator(value: unknown, depth = 0): string {
 		if (depth > 1) return "{ ... }";
 		return fields.length ? `{ ${fields.join(", ")} }` : "{}";
 	}
-	if (type === "array") return `${formatValidator(validator.items, depth)}[]`;
+	if (type === "array") {
+		const items = validator.items ?? validator.value;
+		return `${formatValidator(items, depth)}[]`;
+	}
 	if (type === "union") {
-		const members = Array.isArray(validator.members) ? validator.members : [];
+		const members = Array.isArray(validator.members)
+			? validator.members
+			: Array.isArray(validator.value)
+				? validator.value
+				: [];
 		return members.map((m) => formatValidator(m, depth)).join(" | ");
 	}
 	if (type === "id") return `Id<"${String(validator.tableName ?? "")}">`;
@@ -201,15 +209,25 @@ function SearchResults({
 				return { ...fn, score };
 			})
 			.filter((x) => x.score !== 999)
-			.sort((a, b) => a.score - b.score || a.identifier.localeCompare(b.identifier))
+			.sort(
+				(a, b) => a.score - b.score || a.identifier.localeCompare(b.identifier),
+			)
 			.slice(0, 30);
 	}, [manifest, query]);
 
 	if (!query.trim()) {
-		return <div className="px-2 py-6 text-sm text-[var(--phoenix-text-muted)]">Type to search functions.</div>;
+		return (
+			<div className="px-2 py-6 text-sm text-[var(--phoenix-text-muted)]">
+				Type to search functions.
+			</div>
+		);
 	}
 	if (!items.length) {
-		return <div className="px-2 py-6 text-sm text-[var(--phoenix-text-muted)]">No matches.</div>;
+		return (
+			<div className="px-2 py-6 text-sm text-[var(--phoenix-text-muted)]">
+				No matches.
+			</div>
+		);
 	}
 	return (
 		<div>
@@ -220,10 +238,14 @@ function SearchResults({
 					href={it.href ?? "#"}
 				>
 					<div className="flex items-center gap-2">
-						<span className={`inline-flex items-center px-2 py-0.5 rounded-lg text-[11px] font-medium ${badgeClass(it.functionType)}`}>
+						<span
+							className={`inline-flex items-center px-2 py-0.5 rounded-lg text-[11px] font-medium ${badgeClass(it.functionType)}`}
+						>
 							{it.functionType}
 						</span>
-						<span className="font-mono text-sm text-[var(--phoenix-text)]">{it.identifier}</span>
+						<span className="font-mono text-sm text-[var(--phoenix-text)]">
+							{it.identifier}
+						</span>
 					</div>
 					<div className="mt-1 text-xs text-[var(--phoenix-text-muted)]">
 						{it.moduleDisplayName ?? it.moduleName}
@@ -243,7 +265,8 @@ function RunnerPanel({
 }) {
 	const fn = useMemo(
 		() =>
-			manifest?.functions.find((f) => f.identifier === selectedIdentifier) ?? null,
+			manifest?.functions.find((f) => f.identifier === selectedIdentifier) ??
+			null,
 		[manifest, selectedIdentifier],
 	);
 	const docs = useMemo(
@@ -261,22 +284,25 @@ function RunnerPanel({
 		manifest?.buildInfo?.defaultHttpActionDeployUrl ?? "http://localhost:3218",
 	);
 	const [isRunning, setRunning] = useState(false);
-	const [response, setResponse] = useState<string>("Response will appear here.");
+	const [response, setResponse] = useState<string>(
+		"Response will appear here.",
+	);
 	const [statusLine, setStatusLine] = useState<string>("");
 	const [headersJson, setHeadersJson] = useState<string>("{}");
 
 	useEffect(() => {
 		const next = fn
-			? localStorage.getItem(`convexdoc:args:${fn.identifier}`) ?? "{}"
+			? (localStorage.getItem(`convexdoc:args:${fn.identifier}`) ?? "{}")
 			: "{}";
 		setJsonArgs(next);
 		const nextHeaders = fn
-			? localStorage.getItem(`convexdoc:headers:${fn.identifier}`) ?? "{}"
+			? (localStorage.getItem(`convexdoc:headers:${fn.identifier}`) ?? "{}")
 			: "{}";
 		setHeadersJson(nextHeaders);
 		setToken(localStorage.getItem(tokenKey) ?? "");
 		const defaultUrl =
-			manifest?.buildInfo?.defaultHttpActionDeployUrl ?? "http://localhost:3218";
+			manifest?.buildInfo?.defaultHttpActionDeployUrl ??
+			"http://localhost:3218";
 		setDeployUrl(sessionStorage.getItem(STORAGE.deployUrl) ?? defaultUrl);
 		setResponse("Response will appear here.");
 		setStatusLine("");
@@ -287,7 +313,22 @@ function RunnerPanel({
 	if (!manifest) {
 		return (
 			<div className="rounded-xl p-3 bg-[var(--phoenix-app-surface)] ring-1 ring-[var(--phoenix-border)]">
-				<div className="text-sm font-semibold text-[var(--phoenix-error)]">Manifest unavailable</div>
+				<div className="text-sm font-semibold text-[var(--phoenix-error)]">
+					Manifest unavailable
+				</div>
+			</div>
+		);
+	}
+	if (manifest.buildInfo?.functionRunnerDisabled) {
+		return (
+			<div className="rounded-xl p-3 bg-[var(--phoenix-app-surface)] ring-1 ring-[var(--phoenix-border)]">
+				<div className="text-sm font-semibold" style={{ color: "var(--phoenix-text)" }}>
+					Function Runner
+				</div>
+				<div className="mt-2 text-xs" style={{ color: "var(--phoenix-text-muted)" }}>
+					The function runner is disabled for this deployment. You can browse the API
+					documentation but cannot invoke functions from this site.
+				</div>
 			</div>
 		);
 	}
@@ -353,7 +394,7 @@ function RunnerPanel({
 			const ok = result.json?.status === "success";
 			const value = ok
 				? result.json.value
-				: result.json.errorMessage ?? result.json.message ?? result.json;
+				: (result.json.errorMessage ?? result.json.message ?? result.json);
 			setResponse(prettyJson(value));
 			setStatusLine(
 				`${ok ? "Success" : "Error"} • HTTP ${result.httpStatus}${
@@ -372,7 +413,9 @@ function RunnerPanel({
 		<div className="space-y-3">
 			<div className="rounded-xl p-3 bg-[var(--phoenix-app-surface)] ring-1 ring-[var(--phoenix-border)]">
 				<div className="flex items-center gap-2">
-					<span className={`inline-flex items-center px-2 py-0.5 rounded-lg text-[11px] font-medium ${badgeClass(fn.functionType)}`}>
+					<span
+						className={`inline-flex items-center px-2 py-0.5 rounded-lg text-[11px] font-medium ${badgeClass(fn.functionType)}`}
+					>
 						{fn.functionType}
 					</span>
 					{fn.visibility === "internal" ? (
@@ -385,7 +428,9 @@ function RunnerPanel({
 					</div>
 				</div>
 				{docs?.summary ? (
-					<div className="mt-2 text-xs text-[var(--phoenix-text-muted)]">{docs.summary}</div>
+					<div className="mt-2 text-xs text-[var(--phoenix-text-muted)]">
+						{docs.summary}
+					</div>
 				) : null}
 				{docs?.detailsMarkdown ? (
 					<div className="mt-2 text-xs whitespace-pre-wrap text-[var(--phoenix-text-dim)]">
@@ -397,7 +442,8 @@ function RunnerPanel({
 			<div className="rounded-xl p-3 bg-[var(--phoenix-app-surface)] ring-1 ring-[var(--phoenix-border)] space-y-3">
 				<div>
 					<div className="block text-[11px] mb-1.5 text-[var(--phoenix-text-muted)]">
-						Deployment URL{isHttpAction ? " (base, can include query string)" : ""}
+						Deployment URL
+						{isHttpAction ? " (base, can include query string)" : ""}
 					</div>
 					<input
 						className="convexdoc-input w-full rounded-xl px-3 py-2 text-xs font-mono"
@@ -452,22 +498,30 @@ function RunnerPanel({
 			</div>
 
 			<div className="rounded-xl p-3 bg-[var(--phoenix-app-surface)] ring-1 ring-[var(--phoenix-border)]">
-				<div className="text-xs text-[var(--phoenix-text-muted)]">{statusLine || "Response"}</div>
+				<div className="text-xs text-[var(--phoenix-text-muted)]">
+					{statusLine || "Response"}
+				</div>
 				<pre className="mt-2 text-[11px] leading-5 whitespace-pre-wrap text-[var(--phoenix-text)] overflow-auto">
 					{response}
 				</pre>
 			</div>
 			<div className="rounded-xl p-3 bg-[var(--phoenix-app-surface)] ring-1 ring-[var(--phoenix-border)] grid grid-cols-1 md:grid-cols-2 gap-3">
 				<div>
-					<div className="text-[11px] uppercase tracking-wide text-[var(--phoenix-text-muted)]">args</div>
+					<div className="text-[11px] uppercase tracking-wide text-[var(--phoenix-text-muted)]">
+						args
+					</div>
 					<div className="mt-2 text-xs font-mono text-[var(--phoenix-text-dim)] break-words">
 						{fn.args ? formatValidator(fn.args) : "// no arguments required"}
 					</div>
 				</div>
 				<div>
-					<div className="text-[11px] uppercase tracking-wide text-[var(--phoenix-text-muted)]">returns</div>
+					<div className="text-[11px] uppercase tracking-wide text-[var(--phoenix-text-muted)]">
+						returns
+					</div>
 					<div className="mt-2 text-xs font-mono text-[var(--phoenix-text-dim)] break-words">
-						{fn.returns ? formatValidator(fn.returns) : "// no return validator"}
+						{fn.returns
+							? formatValidator(fn.returns)
+							: "// no return validator"}
 					</div>
 				</div>
 			</div>
@@ -477,8 +531,12 @@ function RunnerPanel({
 
 function mountSearch(manifestPromise: Promise<ManifestShape | null>) {
 	const openBtn = document.getElementById("convexdoc-search-open");
-	const dialog = document.getElementById("convexdoc-search") as HTMLDialogElement | null;
-	const input = document.getElementById("convexdoc-search-input") as HTMLInputElement | null;
+	const dialog = document.getElementById(
+		"convexdoc-search",
+	) as HTMLDialogElement | null;
+	const input = document.getElementById(
+		"convexdoc-search-input",
+	) as HTMLInputElement | null;
 	const results = document.getElementById("convexdoc-search-results");
 	if (!results) return;
 	const root = createRoot(results);
@@ -515,7 +573,10 @@ function mountRunner(manifestPromise: Promise<ManifestShape | null>) {
 
 	const render = () => {
 		root.render(
-			<RunnerPanel manifest={manifest} selectedIdentifier={selectedIdentifier} />,
+			<RunnerPanel
+				manifest={manifest}
+				selectedIdentifier={selectedIdentifier}
+			/>,
 		);
 	};
 
@@ -529,53 +590,11 @@ function mountRunner(manifestPromise: Promise<ManifestShape | null>) {
 		btn.addEventListener("click", () => {
 			const host = btn.closest("[data-convexdoc-fn]");
 			selectedIdentifier =
-				host?.getAttribute("data-convexdoc-fn") ??
-				"unresolved:unbound";
+				host?.getAttribute("data-convexdoc-fn") ?? "unresolved:unbound";
 			const inline = host?.querySelector("[data-convexdoc-inline-runner]");
 			if (inline) inline.classList.remove("hidden");
 			render();
 		});
-	});
-}
-
-function attachThemeToggle() {
-	const toggleBtn = document.getElementById("theme-toggle");
-	if (!toggleBtn) return;
-	const sysDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
-	let isLight = localStorage.getItem(STORAGE.lightMode) === "true";
-	if (localStorage.getItem(STORAGE.lightMode) === null && !sysDark) {
-		isLight = true;
-	}
-
-	const apply = () => {
-		if (isLight) {
-			document.documentElement.classList.add("light");
-			toggleBtn.textContent = "☀";
-		} else {
-			document.documentElement.classList.remove("light");
-			toggleBtn.textContent = "☾";
-		}
-	};
-	apply();
-	toggleBtn.addEventListener("click", () => {
-		isLight = !isLight;
-		localStorage.setItem(STORAGE.lightMode, String(isLight));
-		apply();
-	});
-}
-
-function attachHelpDialog() {
-	const open = document.getElementById("convexdoc-open-runner-help");
-	const dialog = document.getElementById("convexdoc-runner-help") as HTMLDialogElement | null;
-	open?.addEventListener("click", (e) => {
-		e.preventDefault();
-		dialog?.showModal?.();
-	});
-	dialog?.addEventListener("click", (e) => {
-		if (e.target === dialog) dialog.close();
-	});
-	document.querySelectorAll("[data-convexdoc-close]").forEach((btn) => {
-		btn.addEventListener("click", () => dialog?.close());
 	});
 }
 
@@ -605,7 +624,5 @@ function attachScrollSpy() {
 
 const manifestPromise = loadManifest().catch(() => null);
 mountSearch(manifestPromise);
-attachHelpDialog();
 mountRunner(manifestPromise);
-attachThemeToggle();
 attachScrollSpy();

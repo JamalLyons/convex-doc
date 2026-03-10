@@ -1,6 +1,40 @@
 import { existsSync, readFileSync } from "node:fs";
 import { isAbsolute, join, resolve } from "node:path";
 
+export interface ConvexDocFunctionCustomization {
+	description?: string;
+}
+
+export interface ConvexDocModuleCustomization {
+	description?: string;
+	/** Per-function docs keyed by function name (e.g. getTask, createTask). */
+	functions?: Record<string, ConvexDocFunctionCustomization>;
+}
+
+/** Valid values for excludeFunctionTypes (Convex function type names). */
+export const EXCLUDE_FUNCTION_TYPES_VALID = [
+	"query",
+	"mutation",
+	"action",
+	"httpAction",
+	"internalQuery",
+	"internalMutation",
+	"internalAction",
+] as const;
+
+export interface ConvexDocCustomization {
+	theme?: {
+		accent?: string;
+	};
+	modules?: Record<string, ConvexDocModuleCustomization>;
+	/** When true, hide "Learn more about Convex queries/mutations/..." links on function cards. */
+	hideConvexDocsLinks?: boolean;
+	/** Path to a local markdown or plaintext file for the landing page (e.g. "./readme.md"). Resolved from project dir. */
+	landingPage?: string;
+	/** Exclude these Convex function types from the generated docs (e.g. ["internalQuery", "internalMutation"] for public API only). */
+	excludeFunctionTypes?: string[];
+}
+
 export interface ConvexDocConfigFile {
 	projectDir?: string;
 	serverPort?: number;
@@ -10,6 +44,13 @@ export interface ConvexDocConfigFile {
 	adminKey?: string;
 	verboseLogs?: boolean;
 	/**
+	 * When true, the function runner is disabled. Use this when publishing the
+	 * docs site on a public domain so visitors cannot invoke your Convex API.
+	 * The /__convexdoc/run route will reject requests and log that the operation
+	 * is disabled.
+	 */
+	disableFunctionRunner?: boolean;
+	/**
 	 * Which Convex deployment environment to target when fetching the function
 	 * spec. Defaults to "dev".
 	 *
@@ -17,6 +58,7 @@ export interface ConvexDocConfigFile {
 	 * - "prod": run `convex function-spec --prod` to inspect production
 	 */
 	deploymentEnv?: "dev" | "prod";
+	customization?: ConvexDocCustomization;
 }
 
 export interface ResolvedAppConfig {
@@ -27,8 +69,11 @@ export interface ResolvedAppConfig {
 	deploymentUrl?: string;
 	adminKey?: string;
 	verboseLogs: boolean;
+	/** When true, the function runner is disabled (for public deployments). */
+	disableFunctionRunner: boolean;
 	/** Normalized deployment environment ("dev" or "prod"). */
 	deploymentEnv: "dev" | "prod";
+	customization: ConvexDocCustomization;
 	configPath?: string;
 }
 
@@ -38,6 +83,7 @@ export interface ResolveAppConfigOptions {
 	serverPort?: string | number;
 	httpActionDeployUrl?: string;
 	verboseLogs?: boolean;
+	disableFunctionRunner?: boolean;
 	/**
 	 * Optional override for deployment environment. If omitted, falls back to
 	 * CONVEXDOC_ENV, then convexdoc.config.json, then "dev".
@@ -73,6 +119,12 @@ export function resolveAppConfig(
 		fileConfig.data.verboseLogs ??
 		false;
 
+	const disableFunctionRunner =
+		options.disableFunctionRunner ??
+		toBoolean(process.env.CONVEXDOC_DISABLE_FUNCTION_RUNNER) ??
+		fileConfig.data.disableFunctionRunner ??
+		false;
+
 	const deploymentEnvRaw =
 		options.deploymentEnv ??
 		(process.env.CONVEXDOC_ENV as "dev" | "prod" | undefined) ??
@@ -95,14 +147,12 @@ export function resolveAppConfig(
 			process.env.CONVEXDOC_HTTP_ACTION_DEPLOY_URL ??
 			fileConfig.data.httpActionDeployUrl ??
 			DEFAULT_HTTP_ACTION_DEPLOY_URL,
-		deploymentUrl:
-			fileConfig.data.deploymentUrl ??
-			process.env.CONVEX_URL,
-		adminKey:
-			fileConfig.data.adminKey ??
-			process.env.CONVEX_ADMIN_KEY,
+		deploymentUrl: fileConfig.data.deploymentUrl ?? process.env.CONVEX_URL,
+		adminKey: fileConfig.data.adminKey ?? process.env.CONVEX_ADMIN_KEY,
 		verboseLogs,
+		disableFunctionRunner,
 		deploymentEnv,
+		customization: normalizeCustomization(fileConfig.data.customization),
 		configPath: fileConfig.path,
 	};
 }
@@ -118,9 +168,7 @@ function loadConfigFile(cwd: string): {
 	const raw = readFileSync(configPath, "utf-8");
 	const parsed = JSON.parse(raw) as unknown;
 	if (!parsed || typeof parsed !== "object") {
-		throw new Error(
-			`Invalid config at ${configPath}: expected a JSON object`,
-		);
+		throw new Error(`Invalid config at ${configPath}: expected a JSON object`);
 	}
 	return { data: parsed as ConvexDocConfigFile, path: configPath };
 }
@@ -144,4 +192,84 @@ function toBoolean(value: string | undefined): boolean | undefined {
 		return false;
 	}
 	return undefined;
+}
+
+function normalizeCustomization(
+	customization: ConvexDocCustomization | undefined,
+): ConvexDocCustomization {
+	if (!customization || typeof customization !== "object") return {};
+
+	const out: ConvexDocCustomization = {};
+	if (
+		customization.theme &&
+		typeof customization.theme === "object" &&
+		typeof customization.theme.accent === "string" &&
+		customization.theme.accent.trim()
+	) {
+		out.theme = { accent: customization.theme.accent.trim() };
+	}
+
+	if (customization.modules && typeof customization.modules === "object") {
+		const modules: Record<string, ConvexDocModuleCustomization> = {};
+		for (const [moduleName, moduleConfig] of Object.entries(
+			customization.modules,
+		)) {
+			if (
+				!moduleName.trim() ||
+				!moduleConfig ||
+				typeof moduleConfig !== "object"
+			) {
+				continue;
+			}
+			const description =
+				typeof moduleConfig.description === "string"
+					? moduleConfig.description.trim()
+					: "";
+			const modOut: ConvexDocModuleCustomization = description
+				? { description }
+				: {};
+			if (
+				moduleConfig.functions &&
+				typeof moduleConfig.functions === "object"
+			) {
+				const fns: Record<string, ConvexDocFunctionCustomization> = {};
+				for (const [fnName, fnConfig] of Object.entries(
+					moduleConfig.functions,
+				)) {
+					if (!fnName.trim() || !fnConfig || typeof fnConfig !== "object")
+						continue;
+					const fnDesc =
+						typeof fnConfig.description === "string"
+							? fnConfig.description.trim()
+							: "";
+					if (fnDesc) fns[fnName] = { description: fnDesc };
+				}
+				if (Object.keys(fns).length > 0) modOut.functions = fns;
+			}
+			modules[moduleName] = modOut;
+		}
+		out.modules = modules;
+	}
+
+	// Default true: hide "Learn more about Convex" links unless explicitly set to false
+	out.hideConvexDocsLinks = customization.hideConvexDocsLinks !== false;
+
+	if (
+		typeof customization.landingPage === "string" &&
+		customization.landingPage.trim()
+	) {
+		out.landingPage = customization.landingPage.trim();
+	}
+
+	if (Array.isArray(customization.excludeFunctionTypes)) {
+		const valid = new Set(EXCLUDE_FUNCTION_TYPES_VALID);
+		out.excludeFunctionTypes = customization.excludeFunctionTypes.filter(
+			(t): t is (typeof EXCLUDE_FUNCTION_TYPES_VALID)[number] =>
+				typeof t === "string" &&
+				valid.has(t as (typeof EXCLUDE_FUNCTION_TYPES_VALID)[number]),
+		);
+		if (out.excludeFunctionTypes.length === 0) delete out.excludeFunctionTypes;
+	}
+
+	return out;
 }

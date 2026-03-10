@@ -54,6 +54,86 @@ export function parseFunctionSpec(raw: unknown): ParsedFunctionSpec {
 	return { raw: functions, modules, byIdentifier, summary, warnings };
 }
 
+const EXCLUDABLE_TYPES = new Set([
+	"query",
+	"mutation",
+	"action",
+	"httpAction",
+	"internalQuery",
+	"internalMutation",
+	"internalAction",
+]);
+
+function shouldExcludeFunction(
+	fn: ConvexFunctionSpec,
+	excludeTypes: string[],
+): boolean {
+	if (!excludeTypes.length) return false;
+	for (const t of excludeTypes) {
+		if (
+			t === "internalQuery" &&
+			fn.visibility.kind === "internal" &&
+			fn.functionType === "query"
+		)
+			return true;
+		if (
+			t === "internalMutation" &&
+			fn.visibility.kind === "internal" &&
+			fn.functionType === "mutation"
+		)
+			return true;
+		if (
+			t === "internalAction" &&
+			fn.visibility.kind === "internal" &&
+			fn.functionType === "action"
+		)
+			return true;
+		if (t === fn.functionType) return true;
+	}
+	return false;
+}
+
+/**
+ * Returns a new ParsedFunctionSpec with functions excluded by type.
+ * Use excludeTypes like ["internalQuery", "internalMutation", "internalAction"] for public API only.
+ */
+export function filterSpecByFunctionTypes(
+	spec: ParsedFunctionSpec,
+	excludeTypes: string[],
+): ParsedFunctionSpec {
+	const valid = excludeTypes.filter((t) => EXCLUDABLE_TYPES.has(t));
+	if (valid.length === 0) return spec;
+
+	const raw = spec.raw.filter((fn) => !shouldExcludeFunction(fn, valid));
+	const moduleMap = new Map<string, ConvexFunctionSpec[]>();
+	for (const fn of raw) {
+		const moduleName = getModuleName(fn.identifier);
+		if (!moduleMap.has(moduleName)) moduleMap.set(moduleName, []);
+		moduleMap.get(moduleName)?.push(fn);
+	}
+	const modules: ConvexModule[] = Array.from(moduleMap.entries())
+		.sort(([a], [b]) => a.localeCompare(b))
+		.map(([name, fns]) => ({
+			name,
+			functions: fns.sort((a, b) =>
+				getFunctionName(a.identifier).localeCompare(
+					getFunctionName(b.identifier),
+				),
+			),
+		}));
+	const byIdentifier = new Map(raw.map((fn) => [fn.identifier, fn]));
+	const summary = {
+		total: raw.length,
+		queries: count(raw, "query"),
+		mutations: count(raw, "mutation"),
+		actions: count(raw, "action"),
+		httpActions: count(raw, "httpAction"),
+		internal: raw.filter((f) => f.visibility.kind === "internal").length,
+		public: raw.filter((f) => f.visibility.kind === "public").length,
+	};
+	return { raw, modules, byIdentifier, summary, warnings: spec.warnings };
+}
+
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
 /**
@@ -93,7 +173,8 @@ export function getFunctionName(identifier: string | undefined): string {
  * Compact single-line representation of a Convex validator for CLI or HTML display.
  */
 export function formatValidator(v: ConvexValidator, depth = 0): string {
-	const type = v.type;
+	if (v == null || typeof v !== "object") return "unknown";
+	const type = (v as { type?: string }).type;
 	switch (type) {
 		case "object": {
 			if (depth > 1) return "{ ... }";
@@ -102,34 +183,48 @@ export function formatValidator(v: ConvexValidator, depth = 0): string {
 					v as {
 						fields?: Record<
 							string,
-							{ fieldType: ConvexValidator; optional: boolean }
+							{ fieldType?: ConvexValidator; optional?: boolean }
 						>;
 						value?: Record<
 							string,
-							{ fieldType: ConvexValidator; optional: boolean }
+							{ fieldType?: ConvexValidator; optional?: boolean }
 						>;
 					}
 				).fields ??
-				(v as {
-					value?: Record<string, { fieldType: ConvexValidator; optional: boolean }>;
-				}).value ??
+				(
+					v as {
+						value?: Record<
+							string,
+							{ fieldType?: ConvexValidator; optional?: boolean }
+						>;
+					}
+				).value ??
 				{};
 			const fieldStrs = Object.entries(fields).map(([k, f]) => {
-				const opt = f.optional ? "?" : "";
-				return `${k}${opt}: ${formatValidator(f.fieldType, depth + 1)}`;
+				const opt = f?.optional ? "?" : "";
+				const fieldType = f?.fieldType;
+				return `${k}${opt}: ${fieldType != null ? formatValidator(fieldType, depth + 1) : "unknown"}`;
 			});
 			return fieldStrs.length ? `{ ${fieldStrs.join(", ")} }` : "{}";
 		}
-		case "array":
-			return `${formatValidator((v as { items: ConvexValidator }).items, depth)}[]`;
-		case "union":
-			return ((v as { members: ConvexValidator[] }).members ?? [])
-				.map((m) => formatValidator(m, depth))
+		case "array": {
+			const arr = v as { items?: ConvexValidator; value?: ConvexValidator };
+			const items = arr.items ?? arr.value;
+			return `${items != null ? formatValidator(items, depth) : "unknown"}[]`;
+		}
+		case "union": {
+			const u = v as { members?: ConvexValidator[]; value?: ConvexValidator[] };
+			const members =
+				u.members ??
+				(Array.isArray(u.value) ? u.value : []);
+			return members
+				.map((m) => (m != null ? formatValidator(m, depth) : "unknown"))
 				.join(" | ");
+		}
 		case "literal":
-			return JSON.stringify((v as { value: unknown }).value);
+			return JSON.stringify((v as { value?: unknown }).value);
 		case "id":
-			return `Id<"${(v as { tableName: string }).tableName}">`;
+			return `Id<"${String((v as { tableName?: string }).tableName ?? "")}">`;
 		case "null":
 			return "null";
 		case "any":
@@ -168,7 +263,10 @@ function normalizeFunctionSpec(
 		raw.args ?? raw.argsValidator ?? raw.argument ?? raw.arguments,
 	);
 	const returns = parseValidatorField(
-		raw.returns ?? raw.returnValue ?? raw.returnValidator ?? raw.returnsValidator,
+		raw.returns ??
+			raw.returnValue ??
+			raw.returnValidator ??
+			raw.returnsValidator,
 	);
 
 	const httpMethod =
@@ -212,11 +310,7 @@ function normalizeFunctionType(s: string): ConvexFunctionType {
 	if (lower === "httpaction" || lower === "http_action") {
 		return "httpAction";
 	}
-	if (
-		lower === "query" ||
-		lower === "mutation" ||
-		lower === "action"
-	) {
+	if (lower === "query" || lower === "mutation" || lower === "action") {
 		return lower as ConvexFunctionType;
 	}
 	if (s === "Query" || s === "Mutation" || s === "Action") {
@@ -230,12 +324,7 @@ function resolveIdentifier(
 	index: number,
 	functionType: ConvexFunctionType,
 ): string {
-	const candidates = [
-		raw.identifier,
-		raw.name,
-		raw.udfPath,
-		raw.canonicalName,
-	];
+	const candidates = [raw.identifier, raw.name, raw.udfPath, raw.canonicalName];
 	for (const candidate of candidates) {
 		if (typeof candidate === "string" && candidate.trim()) {
 			return candidate;
@@ -278,9 +367,10 @@ function normalizeValidator(value: unknown): unknown {
 		};
 	}
 	if (type === "array" || type === "set") {
+		const itemValidator = obj.items ?? obj.value;
 		return {
 			...obj,
-			items: normalizeValidator(obj.items),
+			items: normalizeValidator(itemValidator),
 		};
 	}
 	if (type === "map") {
@@ -304,10 +394,14 @@ function normalizeValidator(value: unknown): unknown {
 		};
 	}
 	if (type === "union") {
-		const members = Array.isArray(obj.members) ? obj.members : [];
+		const memberList = Array.isArray(obj.members)
+			? obj.members
+			: Array.isArray(obj.value)
+				? obj.value
+				: [];
 		return {
 			...obj,
-			members: members.map(normalizeValidator),
+			members: memberList.map(normalizeValidator),
 		};
 	}
 	return obj;

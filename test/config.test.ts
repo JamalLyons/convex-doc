@@ -1,7 +1,7 @@
+import assert from "node:assert/strict";
 import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import assert from "node:assert/strict";
 import test from "node:test";
 import { resolveAppConfig } from "../lib/config.ts";
 
@@ -18,6 +18,12 @@ test("resolveAppConfig reads defaults from convexdoc.config.json", () => {
 					httpActionDeployUrl: "http://localhost:9999",
 					deploymentUrl: "https://from-config.convex.cloud",
 					verboseLogs: true,
+					customization: {
+						theme: { accent: "#8b5cf6" },
+						modules: {
+							tasks: { description: "Task module docs" },
+						},
+					},
 				},
 				null,
 				2,
@@ -29,6 +35,11 @@ test("resolveAppConfig reads defaults from convexdoc.config.json", () => {
 		assert.equal(config.httpActionDeployUrl, "http://localhost:9999");
 		assert.equal(config.deploymentUrl, "https://from-config.convex.cloud");
 		assert.equal(config.verboseLogs, true);
+		assert.equal(config.customization.theme?.accent, "#8b5cf6");
+		assert.equal(
+			config.customization.modules?.tasks?.description,
+			"Task module docs",
+		);
 	} finally {
 		rmSync(dir, { recursive: true, force: true });
 	}
@@ -53,9 +64,13 @@ test("resolveAppConfig falls back to env for deploymentUrl", () => {
 	const prev = process.env.CONVEX_URL;
 	process.env.CONVEX_URL = "https://from-env.convex.cloud";
 	try {
-		writeFileSync(join(dir, "convexdoc.config.json"), JSON.stringify({}, null, 2));
+		writeFileSync(
+			join(dir, "convexdoc.config.json"),
+			JSON.stringify({}, null, 2),
+		);
 		const config = resolveAppConfig({ cwd: dir });
 		assert.equal(config.deploymentUrl, "https://from-env.convex.cloud");
+		assert.deepEqual(config.customization, {});
 	} finally {
 		process.env.CONVEX_URL = prev;
 		rmSync(dir, { recursive: true, force: true });

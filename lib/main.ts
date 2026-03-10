@@ -31,10 +31,7 @@ program
 	.description(
 		"Fetch and display the function spec from your Convex deployment",
 	)
-	.option(
-		"-p, --project-dir <path>",
-		"Path to your Convex project root",
-	)
+	.option("-p, --project-dir <path>", "Path to your Convex project root")
 	.option("-o, --output <file>", "Write raw spec JSON to a file")
 	.option("--json", "Output raw JSON instead of formatted display")
 	.action(async (opts) => {
@@ -85,10 +82,7 @@ program
 program
 	.command("generate")
 	.description("Generate static HTML documentation into docs")
-	.option(
-		"-p, --project-dir <path>",
-		"Path to your Convex project root",
-	)
+	.option("-p, --project-dir <path>", "Path to your Convex project root")
 	.action(async (opts) => {
 		const appConfig = resolveAppConfig({
 			projectDir: opts.projectDir,
@@ -130,6 +124,8 @@ program
 				httpActionDeployUrl: appConfig.httpActionDeployUrl,
 				deploymentEnv: appConfig.deploymentEnv,
 				deploymentUrl: appConfig.deploymentUrl,
+				customization: appConfig.customization,
+				disableFunctionRunner: appConfig.disableFunctionRunner,
 			});
 			spinner.succeed(
 				`Docs written to ${outputDir}. Run \`convexdoc serve\` to view.`,
@@ -145,10 +141,7 @@ program
 program
 	.command("serve")
 	.description("Serve the generated docs site locally")
-	.option(
-		"-p, --project-dir <path>",
-		"Path to your Convex project root",
-	)
+	.option("-p, --project-dir <path>", "Path to your Convex project root")
 	.option("-P, --port <number>", "Port to listen on")
 	.option("--verbose-logs", "Enable detailed request logs")
 	.action(async (opts) => {
@@ -188,6 +181,7 @@ program
 			verboseLogs: appConfig.verboseLogs,
 			deploymentUrl: appConfig.deploymentUrl,
 			adminKey: appConfig.adminKey,
+			disableFunctionRunner: appConfig.disableFunctionRunner,
 		});
 	});
 
@@ -195,10 +189,7 @@ program
 program
 	.command("start")
 	.description("Generate docs and then serve the docs site locally")
-	.option(
-		"-p, --project-dir <path>",
-		"Path to your Convex project root",
-	)
+	.option("-p, --project-dir <path>", "Path to your Convex project root")
 	.option("-P, --port <number>", "Port to listen on")
 	.option("--verbose-logs", "Enable detailed request logs")
 	.action(async (opts) => {
@@ -245,10 +236,10 @@ program
 				httpActionDeployUrl: appConfig.httpActionDeployUrl,
 				deploymentEnv: appConfig.deploymentEnv,
 				deploymentUrl: appConfig.deploymentUrl,
+				customization: appConfig.customization,
+				disableFunctionRunner: appConfig.disableFunctionRunner,
 			});
-			spinner.succeed(
-				`Docs written to ${docsDir}. Starting local server...`,
-			);
+			spinner.succeed(`Docs written to ${docsDir}. Starting local server...`);
 		} catch (err: unknown) {
 			spinner.fail("Generate failed");
 			console.error(chalk.red((err as Error).message));
@@ -266,6 +257,7 @@ program
 			verboseLogs: appConfig.verboseLogs,
 			deploymentUrl: appConfig.deploymentUrl,
 			adminKey: appConfig.adminKey,
+			disableFunctionRunner: appConfig.disableFunctionRunner,
 		});
 	});
 
@@ -285,8 +277,8 @@ function printParsedSpec(parsed: ReturnType<typeof parseFunctionSpec>) {
 	console.log(`  ${chalk.white("Total")}      ${chalk.yellow(summary.total)}`);
 	console.log(
 		`  ${chalk.blue("Queries")}    ${chalk.yellow(summary.queries)}   ` +
-		`${chalk.green("Mutations")}  ${chalk.yellow(summary.mutations)}   ` +
-		`${chalk.magenta("Actions")}    ${chalk.yellow(summary.actions)}`,
+			`${chalk.green("Mutations")}  ${chalk.yellow(summary.mutations)}   ` +
+			`${chalk.magenta("Actions")}    ${chalk.yellow(summary.actions)}`,
 	);
 	if (summary.httpActions > 0) {
 		console.log(
@@ -295,7 +287,7 @@ function printParsedSpec(parsed: ReturnType<typeof parseFunctionSpec>) {
 	}
 	console.log(
 		`  ${chalk.gray("Public")}     ${chalk.yellow(summary.public)}   ` +
-		`${chalk.gray("Internal")}   ${chalk.yellow(summary.internal)}`,
+			`${chalk.gray("Internal")}   ${chalk.yellow(summary.internal)}`,
 	);
 
 	if (summary.total === 0) {
