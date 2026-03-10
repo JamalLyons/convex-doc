@@ -13,6 +13,7 @@ import {
 	unlinkSync,
 	writeFileSync,
 } from "node:fs";
+import { createRequire } from "node:module";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -28,6 +29,8 @@ import {
 	getFunctionName,
 	getModuleName,
 } from "./parser.js";
+
+const require = createRequire(import.meta.url);
 
 const TAILWIND_INPUT_CSS = `@tailwind base;
 @tailwind components;
@@ -499,21 +502,17 @@ module.exports = {
 	);
 
 	try {
-		await execa(
-			"npx",
-			[
-				"--yes",
-				"tailwindcss@3",
-				"-i",
-				inputCssPath,
-				"-o",
-				outputCssPath,
-				"-c",
-				tailwindConfigPath,
-				"--minify",
-			],
-			{ env: { ...process.env } },
-		);
+		const tailwindBin = require.resolve("tailwindcss/lib/cli.js");
+		await execa("node", [
+			tailwindBin,
+			"-i",
+			inputCssPath,
+			"-o",
+			outputCssPath,
+			"-c",
+			tailwindConfigPath,
+			"--minify",
+		]);
 	} finally {
 		try {
 			unlinkSync(tailwindConfigPath);
