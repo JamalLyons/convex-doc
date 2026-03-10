@@ -55,7 +55,9 @@ const STORAGE = {
  * clear all convexdoc localStorage/sessionStorage so the UI uses fresh config.
  * Called once when the manifest is first loaded.
  */
-function clearConvexDocStorageIfConfigChanged(manifest: ManifestShape | null): void {
+function clearConvexDocStorageIfConfigChanged(
+	manifest: ManifestShape | null,
+): void {
 	const build = manifest?.buildInfo;
 	if (!build) return;
 	const fingerprint = `${build.defaultHttpActionDeployUrl ?? ""}|${build.generatedAt ?? ""}`;
@@ -136,7 +138,8 @@ function parseErrorText(raw: string): {
 		lines[1] ??
 		lines[0] ??
 		"An error occurred while running the function.";
-	const summary = candidate.replace(/^uncaught error:\s*/i, "").trim() || candidate.trim();
+	const summary =
+		candidate.replace(/^uncaught error:\s*/i, "").trim() || candidate.trim();
 	return { summary, requestId, fullText: raw };
 }
 
@@ -607,8 +610,7 @@ function RunnerPanel({
 									</div>
 									{requestId ? (
 										<div className="text-[10px] text-[var(--phoenix-text-muted)]">
-											Request ID:{" "}
-											<span className="font-mono">{requestId}</span>
+											Request ID: <span className="font-mono">{requestId}</span>
 										</div>
 									) : null}
 								</div>
