@@ -65,3 +65,11 @@ export const deleteList = mutation({
 		return args.id;
 	},
 });
+
+export const throwError = mutation({
+	args: {},
+	returns: v.any(),
+	handler: async () => {
+		throw new Error("This is a test error");
+	},
+});

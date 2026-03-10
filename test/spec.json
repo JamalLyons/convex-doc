@@ -1,5 +1,5 @@
 {
-	"url": "https://fine-raven-957.convex.cloud",
+	"url": "https://<your-deployment>.convex.cloud",
 	"functions": [
 		{
 			"functionType": "HttpAction",

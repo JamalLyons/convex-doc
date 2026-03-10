@@ -28,8 +28,11 @@ interface ManifestShape {
 	httpRoutes?: HttpRoute[];
 	buildInfo?: {
 		defaultHttpActionDeployUrl?: string;
+		generatedAt?: string;
 		/** When true, the function runner is disabled (e.g. for public deployments). */
 		functionRunnerDisabled?: boolean;
+		/** When true, surface full error strings (including stack traces) in the UI. */
+		verboseErrors?: boolean;
 	};
 }
 
@@ -40,15 +43,45 @@ interface RunResult {
 }
 
 const MANIFEST_URL = "./convexdoc.manifest.json";
+const STORAGE_PREFIX = "convexdoc:";
 const STORAGE = {
 	token: "convexdoc:bearerToken",
 	deployUrl: "convexdoc:deployUrl",
+	configFingerprint: "convexdoc:configFingerprint",
 };
+
+/**
+ * If the manifest's config (e.g. default deploy URL) changed since last load,
+ * clear all convexdoc localStorage/sessionStorage so the UI uses fresh config.
+ * Called once when the manifest is first loaded.
+ */
+function clearConvexDocStorageIfConfigChanged(manifest: ManifestShape | null): void {
+	const build = manifest?.buildInfo;
+	if (!build) return;
+	const fingerprint = `${build.defaultHttpActionDeployUrl ?? ""}|${build.generatedAt ?? ""}`;
+	try {
+		const stored = localStorage.getItem(STORAGE.configFingerprint);
+		if (stored === fingerprint) return;
+		for (let i = localStorage.length - 1; i >= 0; i--) {
+			const key = localStorage.key(i);
+			if (key?.startsWith(STORAGE_PREFIX)) localStorage.removeItem(key);
+		}
+		for (let i = sessionStorage.length - 1; i >= 0; i--) {
+			const key = sessionStorage.key(i);
+			if (key?.startsWith(STORAGE_PREFIX)) sessionStorage.removeItem(key);
+		}
+		localStorage.setItem(STORAGE.configFingerprint, fingerprint);
+	} catch {
+		// Ignore storage errors (e.g. private mode)
+	}
+}
 
 async function loadManifest(): Promise<ManifestShape> {
 	const res = await fetch(MANIFEST_URL, { cache: "no-store" });
 	if (!res.ok) throw new Error("Failed to load manifest");
-	return (await res.json()) as ManifestShape;
+	const manifest = (await res.json()) as ManifestShape;
+	clearConvexDocStorageIfConfigChanged(manifest);
+	return manifest;
 }
 
 function displayIdentifier(identifier: string): string {
@@ -81,6 +114,30 @@ function prettyJson(v: unknown): string {
 	} catch {
 		return String(v);
 	}
+}
+
+function parseErrorText(raw: string): {
+	summary: string;
+	requestId?: string;
+	fullText: string;
+} {
+	const lines = raw.split(/\r?\n/);
+	let requestId: string | undefined;
+	for (const line of lines) {
+		const match = line.match(/\[Request ID:\s*([^\]\s]+)\]/i);
+		if (match) {
+			requestId = match[1];
+			break;
+		}
+	}
+	const candidate =
+		lines.find((line) => /^uncaught error:/i.test(line.trim())) ??
+		lines.find((line) => /error/i.test(line)) ??
+		lines[1] ??
+		lines[0] ??
+		"An error occurred while running the function.";
+	const summary = candidate.replace(/^uncaught error:\s*/i, "").trim() || candidate.trim();
+	return { summary, requestId, fullText: raw };
 }
 
 function formatJsonText(value: string): string | null {
@@ -296,11 +353,15 @@ function RunnerPanel({
 		manifest?.buildInfo?.defaultHttpActionDeployUrl ?? "http://localhost:3218",
 	);
 	const [isRunning, setRunning] = useState(false);
-	const [response, setResponse] = useState<string>(
+	const [responseValue, setResponseValue] = useState<unknown>(
 		"Response will appear here.",
 	);
+	const [responseKind, setResponseKind] = useState<
+		"idle" | "success" | "error"
+	>("idle");
 	const [statusLine, setStatusLine] = useState<string>("");
 	const [headersJson, setHeadersJson] = useState<string>("{}");
+	const [showErrorDetails, setShowErrorDetails] = useState(false);
 
 	useEffect(() => {
 		const next = fn
@@ -317,8 +378,10 @@ function RunnerPanel({
 			manifest?.buildInfo?.defaultHttpActionDeployUrl ??
 			"http://localhost:3218";
 		setDeployUrl(sessionStorage.getItem(STORAGE.deployUrl) ?? defaultUrl);
-		setResponse("Response will appear here.");
+		setResponseValue("Response will appear here.");
+		setResponseKind("idle");
 		setStatusLine("");
+		setShowErrorDetails(false);
 	}, [fn, manifest]);
 
 	const isHttpAction = fn?.functionType === "httpAction";
@@ -362,6 +425,7 @@ function RunnerPanel({
 	const onRun = async () => {
 		setRunning(true);
 		setStatusLine("");
+		setShowErrorDetails(false);
 		let args: Record<string, unknown>;
 		let headers: Record<string, string> | undefined;
 		try {
@@ -370,7 +434,8 @@ function RunnerPanel({
 				: {};
 			setJsonArgs(prettyJson(args));
 		} catch (err) {
-			setResponse((err as Error).message);
+			setResponseValue((err as Error).message);
+			setResponseKind("error");
 			setStatusLine("Invalid args");
 			setRunning(false);
 			return;
@@ -385,7 +450,8 @@ function RunnerPanel({
 					Object.entries(parsed).map(([k, v]) => [k, String(v)]),
 				);
 			} catch (err) {
-				setResponse((err as Error).message);
+				setResponseValue((err as Error).message);
+				setResponseKind("error");
 				setStatusLine("Invalid headers");
 				setRunning(false);
 				return;
@@ -415,7 +481,8 @@ function RunnerPanel({
 			const value = ok
 				? result.json.value
 				: (result.json.errorMessage ?? result.json.message ?? result.json);
-			setResponse(prettyJson(value));
+			setResponseValue(value);
+			setResponseKind(ok ? "success" : "error");
 			setStatusLine(
 				`${ok ? "Success" : "Error"} • HTTP ${result.httpStatus}${
 					result.durationMs ? ` • ${result.durationMs}ms` : ""
@@ -423,7 +490,8 @@ function RunnerPanel({
 			);
 		} catch (err) {
 			setStatusLine("Runner failed");
-			setResponse((err as Error).message ?? String(err));
+			setResponseValue((err as Error).message ?? String(err));
+			setResponseKind("error");
 		} finally {
 			setRunning(false);
 		}
@@ -511,13 +579,52 @@ function RunnerPanel({
 				</div>
 			</div>
 
-			<div className="rounded-xl p-3 bg-[var(--phoenix-app-surface)] ring-1 ring-[var(--phoenix-border)]">
-				<div className="text-xs text-[var(--phoenix-text-muted)]">
-					{statusLine || "Response"}
+			<div className="rounded-xl p-3 bg-[var(--phoenix-app-surface)] ring-1 ring-[var(--phoenix-border)] space-y-2">
+				<div className="flex items-center justify-between gap-2">
+					<div className="text-xs text-[var(--phoenix-text-muted)]">
+						{statusLine || "Response"}
+					</div>
+					{responseKind === "error" &&
+					typeof responseValue === "string" &&
+					manifest.buildInfo?.verboseErrors ? (
+						<button
+							type="button"
+							onClick={() => setShowErrorDetails((v) => !v)}
+							className="text-[10px] px-2 py-0.5 rounded-md phoenix-btn-ghost"
+						>
+							{showErrorDetails ? "Hide details" : "Show full error"}
+						</button>
+					) : null}
 				</div>
-				<pre className="mt-2 text-[11px] leading-5 whitespace-pre-wrap text-[var(--phoenix-text)] overflow-auto">
-					{response}
-				</pre>
+				{responseKind === "error" && typeof responseValue === "string" ? (
+					<>
+						{(() => {
+							const { summary, requestId } = parseErrorText(responseValue);
+							return (
+								<div className="space-y-1">
+									<div className="text-[11px] text-[var(--phoenix-error)] font-medium">
+										{summary}
+									</div>
+									{requestId ? (
+										<div className="text-[10px] text-[var(--phoenix-text-muted)]">
+											Request ID:{" "}
+											<span className="font-mono">{requestId}</span>
+										</div>
+									) : null}
+								</div>
+							);
+						})()}
+						{manifest.buildInfo?.verboseErrors && showErrorDetails ? (
+							<pre className="mt-2 text-[11px] leading-5 whitespace-pre-wrap text-[var(--phoenix-text)] overflow-auto border-t border-[var(--phoenix-border)] pt-2">
+								{responseValue}
+							</pre>
+						) : null}
+					</>
+				) : (
+					<pre className="mt-1 text-[11px] leading-5 whitespace-pre-wrap text-[var(--phoenix-text)] overflow-auto">
+						{prettyJson(responseValue)}
+					</pre>
+				)}
 			</div>
 		</div>
 	);

@@ -124,6 +124,7 @@ program
 				deploymentUrl: appConfig.deploymentUrl,
 				customization: appConfig.customization,
 				disableFunctionRunner: appConfig.disableFunctionRunner,
+				verboseErrorsInUi: appConfig.verboseLogs,
 			});
 			spinner.succeed(
 				`Docs written to ${outputDir}. Run \`convexdoc serve\` to view.`,
@@ -235,6 +236,7 @@ program
 				deploymentUrl: appConfig.deploymentUrl,
 				customization: appConfig.customization,
 				disableFunctionRunner: appConfig.disableFunctionRunner,
+				verboseErrorsInUi: appConfig.verboseLogs,
 			});
 			spinner.succeed(`Docs written to ${docsDir}. Starting local server...`);
 		} catch (err: unknown) {

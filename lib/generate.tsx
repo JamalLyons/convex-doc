@@ -350,6 +350,11 @@ export async function generateDocs(
 		customization?: ConvexDocCustomization;
 		/** When true, the function runner is disabled (manifest + static site). */
 		disableFunctionRunner?: boolean;
+		/**
+		 * When true, the function runner UI will surface full error strings
+		 * (including stack traces) instead of a compact summary.
+		 */
+		verboseErrorsInUi?: boolean;
 	},
 ): Promise<void> {
 	if (existsSync(outputDir)) {
@@ -392,6 +397,9 @@ export async function generateDocs(
 		deploymentEnv: options?.deploymentEnv ?? "dev",
 		deploymentUrl: options?.deploymentUrl,
 		functionRunnerDisabled: options?.disableFunctionRunner === true,
+		// When true, the function runner UI will surface full error strings
+		// (including stack traces) instead of a compact summary.
+		verboseErrors: options?.verboseErrorsInUi === true,
 	};
 
 	// Write manifest scaffold (HTTP routes merged later)

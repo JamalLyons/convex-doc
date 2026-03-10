@@ -111,7 +111,7 @@ pnpm convexdoc serve [options]
 
 - `-p, --project-dir <path>` – Path to your Convex project root
 - `-P, --port <number>` – Port to listen on (default: `3000`)
-- `--verbose-logs` – Enable detailed request logs
+- `--verbose-logs` – Enable detailed request logs and verbose error details in the UI
 
 Serves the previously generated docs folder. Requires that:
 
@@ -128,7 +128,7 @@ pnpm convexdoc start [options]
 
 - `-p, --project-dir <path>` – Path to your Convex project root
 - `-P, --port <number>` – Port to listen on (default: `3000`)
-- `--verbose-logs` – Enable detailed request logs
+- `--verbose-logs` – Enable detailed request logs and verbose error details in the UI
 
 This is a convenience command that:
 
@@ -171,6 +171,12 @@ Place a `convexdoc.config.json` file in the directory where you run `convexdoc`:
 
   // Optional: port for `convexdoc serve` / `convexdoc start`
   "serverPort": 3000,
+
+  // Optional: when true, enable verbose logging in the server and
+  // show full error messages (including stack traces) in the Function
+  // Runner UI. When false (default), the UI shows a compact error
+  // summary plus Request ID.
+  "verboseLogs": false,
 
   // When true, disable the function runner (for public deployments)
   "disableFunctionRunner": false,
@@ -222,7 +228,7 @@ The following environment variables can override or supplement config:
 - `CONVEXDOC_PROJECT_DIR` – Default project directory
 - `CONVEXDOC_SERVER_PORT` – Default port for `serve` / `start`
 - `CONVEXDOC_HTTP_ACTION_DEPLOY_URL` – Base URL for HTTP actions
-- `CONVEXDOC_VERBOSE_LOGS` – `"true"` / `"false"` style toggle for verbose logs
+- `CONVEXDOC_VERBOSE_LOGS` – `"true"` / `"false"` style toggle for verbose logs and verbose error details in the UI
 - `CONVEXDOC_DISABLE_FUNCTION_RUNNER` – `"true"` to disable the function runner
 - `CONVEXDOC_ENV` – `"dev"` or `"prod"` deployment environment
 - `CONVEX_URL` – Deployment URL (used when `deploymentUrl` is not provided).
