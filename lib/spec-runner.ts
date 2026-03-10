@@ -8,8 +8,6 @@ export interface FunctionSpecOptions {
 	projectDir?: string;
 	/** Use a specific deployment URL instead of the one from .env */
 	deploymentUrl?: string;
-	/** Admin key for the deployment */
-	adminKey?: string;
 	/**
 	 * Target Convex deployment environment.
 	 * - "dev" (default): use the dev deployment
@@ -37,9 +35,6 @@ export async function fetchFunctionSpec(
 
 	if (opts.deploymentUrl) {
 		env.CONVEX_URL = opts.deploymentUrl;
-	}
-	if (opts.adminKey) {
-		env.CONVEX_ADMIN_KEY = opts.adminKey;
 	}
 
 	let stdout: string;

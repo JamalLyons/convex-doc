@@ -43,7 +43,7 @@ export async function serveDocsSite(opts: {
 	port: number;
 	verboseLogs?: boolean;
 	deploymentUrl?: string;
-	adminKey?: string;
+	authToken?: string;
 	/** When true, /__convexdoc/run will not process requests and will log that the operation is disabled. */
 	disableFunctionRunner?: boolean;
 }): Promise<void> {
@@ -52,7 +52,7 @@ export async function serveDocsSite(opts: {
 		port,
 		verboseLogs = false,
 		deploymentUrl,
-		adminKey,
+		authToken,
 		disableFunctionRunner = false,
 	} = opts;
 
@@ -181,11 +181,13 @@ export async function serveDocsSite(opts: {
 				const headers: Record<string, string> = {
 					"content-type": "application/json",
 				};
+				const tokenFromConfig =
+					authToken ??
+					process.env.CONVEXDOC_AUTH_TOKEN;
 				if (body.bearerToken) {
 					headers.authorization = `Bearer ${body.bearerToken}`;
-				} else if (adminKey ?? process.env.CONVEX_ADMIN_KEY) {
-					// Best-effort: some environments may accept admin auth here.
-					headers.authorization = `Convex ${adminKey ?? process.env.CONVEX_ADMIN_KEY}`;
+				} else if (tokenFromConfig) {
+					headers.authorization = `Bearer ${tokenFromConfig}`;
 				}
 
 				const t0 = Date.now();
@@ -291,5 +293,5 @@ export async function serveDocsSite(opts: {
 	});
 
 	// Keep process alive
-	await new Promise<void>(() => {});
+	await new Promise<void>(() => { });
 }

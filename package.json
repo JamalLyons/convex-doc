@@ -1,6 +1,6 @@
 {
 	"name": "convexdoc",
-	"version": "0.1.2",
+	"version": "0.1.3",
 	"description": "Documentation generator and interactive tester for Convex deployments",
 	"type": "module",
 	"bin": {

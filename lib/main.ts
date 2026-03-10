@@ -45,7 +45,6 @@ program
 			rawSpec = await fetchFunctionSpec({
 				projectDir: appConfig.projectDir,
 				deploymentUrl: appConfig.deploymentUrl,
-				adminKey: appConfig.adminKey,
 				deploymentEnv: appConfig.deploymentEnv,
 			});
 			spinner.succeed("Function spec fetched successfully");
@@ -94,7 +93,6 @@ program
 			rawSpec = await fetchFunctionSpec({
 				projectDir: appConfig.projectDir,
 				deploymentUrl: appConfig.deploymentUrl,
-				adminKey: appConfig.adminKey,
 				deploymentEnv: appConfig.deploymentEnv,
 			});
 			spinner.succeed("Function spec fetched");
@@ -180,7 +178,7 @@ program
 			port: appConfig.serverPort,
 			verboseLogs: appConfig.verboseLogs,
 			deploymentUrl: appConfig.deploymentUrl,
-			adminKey: appConfig.adminKey,
+			authToken: appConfig.authToken,
 			disableFunctionRunner: appConfig.disableFunctionRunner,
 		});
 	});
@@ -206,7 +204,6 @@ program
 			rawSpec = await fetchFunctionSpec({
 				projectDir: appConfig.projectDir,
 				deploymentUrl: appConfig.deploymentUrl,
-				adminKey: appConfig.adminKey,
 				deploymentEnv: appConfig.deploymentEnv,
 			});
 			spinner.succeed("Function spec fetched");
@@ -256,7 +253,7 @@ program
 			port: appConfig.serverPort,
 			verboseLogs: appConfig.verboseLogs,
 			deploymentUrl: appConfig.deploymentUrl,
-			adminKey: appConfig.adminKey,
+			authToken: appConfig.authToken,
 			disableFunctionRunner: appConfig.disableFunctionRunner,
 		});
 	});

@@ -159,13 +159,14 @@ Place a `convexdoc.config.json` file in the directory where you run `convexdoc`:
   "docsDir": "docs",
 
   // Base URL for Convex HTTP actions when running locally
-  "httpActionDeployUrl": "http://localhost:3218",
+  "httpActionDeployUrl": "https://<your-deployment>.convex.site",
 
   // Optional: override deployment URL when fetching the function spec
-  "deploymentUrl": "https://your-deployment.convex.cloud",
+  "deploymentUrl": "https://<your-deployment>.convex.cloud",
 
-  // Optional: Convex admin key if required by your deployment
-  "adminKey": "your-admin-key",
+  // Optional: Convex auth token (e.g. a JWT) if required by your deployment.
+  // This will be sent as `Authorization: Bearer <authToken>` when running functions.
+  "authToken": "your-auth-token",
 
   // Optional: port for `convexdoc serve` / `convexdoc start`
   "serverPort": 3000,
@@ -224,7 +225,7 @@ The following environment variables can override or supplement config:
 - `CONVEXDOC_DISABLE_FUNCTION_RUNNER` – `"true"` to disable the function runner
 - `CONVEXDOC_ENV` – `"dev"` or `"prod"` deployment environment
 - `CONVEX_URL` – Deployment URL (used when `deploymentUrl` is not provided)
-- `CONVEX_ADMIN_KEY` – Admin key for your Convex deployment
+- `CONVEXDOC_AUTH_TOKEN` – Default auth token used by ConvexDoc when running functions (sent as a Bearer token).
 
 Boolean strings like `"true"`, `"1"`, `"yes"` are treated as `true`, and
 `"false"`, `"0"`, `"no"` as `false`.

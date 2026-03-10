@@ -41,7 +41,7 @@ export interface ConvexDocConfigFile {
 	docsDir?: string;
 	httpActionDeployUrl?: string;
 	deploymentUrl?: string;
-	adminKey?: string;
+	authToken?: string;
 	verboseLogs?: boolean;
 	/**
 	 * When true, the function runner is disabled. Use this when publishing the
@@ -67,7 +67,7 @@ export interface ResolvedAppConfig {
 	docsDir: string;
 	httpActionDeployUrl: string;
 	deploymentUrl?: string;
-	adminKey?: string;
+	authToken?: string;
 	verboseLogs: boolean;
 	/** When true, the function runner is disabled (for public deployments). */
 	disableFunctionRunner: boolean;
@@ -152,7 +152,9 @@ export function resolveAppConfig(
 			fileConfig.data.httpActionDeployUrl ??
 			DEFAULT_HTTP_ACTION_DEPLOY_URL,
 		deploymentUrl: fileConfig.data.deploymentUrl ?? process.env.CONVEX_URL,
-		adminKey: fileConfig.data.adminKey ?? process.env.CONVEX_ADMIN_KEY,
+		authToken:
+			fileConfig.data.authToken ??
+			process.env.CONVEXDOC_AUTH_TOKEN,
 		verboseLogs,
 		disableFunctionRunner,
 		deploymentEnv,
@@ -173,7 +175,7 @@ function loadConfigFile(cwd: string): {
 			serverPort: DEFAULT_SERVER_PORT,
 			docsDir: DEFAULT_DOCS_DIR,
 			deploymentUrl: "",
-			adminKey: "",
+			authToken: "",
 			httpActionDeployUrl: DEFAULT_HTTP_ACTION_DEPLOY_URL,
 			verboseLogs: false,
 			disableFunctionRunner: false,
