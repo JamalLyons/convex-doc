@@ -357,6 +357,21 @@ export async function generateDocs(
 	}
 	mkdirSync(outputDir, { recursive: true });
 
+	// Copy static assets (e.g. Convex logo) into docs output so header images work.
+	try {
+		const moduleDir = dirname(fileURLToPath(import.meta.url));
+		const logoSource = resolve(moduleDir, "../assets/convex.png");
+		const assetsDir = join(outputDir, "assets");
+		if (existsSync(logoSource)) {
+			mkdirSync(assetsDir, { recursive: true });
+			const logoTarget = join(assetsDir, "convex.png");
+			rmSync(logoTarget, { force: true });
+			writeFileSync(logoTarget, readFileSync(logoSource));
+		}
+	} catch {
+		// Best-effort; ignore asset copy failures.
+	}
+
 	const baseHref = ""; // same dir as index
 	const customization = options?.customization ?? {};
 	const filteredSpec = filterSpecByFunctionTypes(

@@ -6,6 +6,12 @@
 	"bin": {
 		"convexdoc": "./dist/main.js"
 	},
+	"main": "./dist/main.js",
+	"types": "./dist/main.d.ts",
+	"files": [
+		"dist",
+		"assets"
+	],
 	"scripts": {
 		"build": "tsc",
 		"dev": "tsx lib/main.ts",
@@ -30,6 +36,25 @@
 		"name": "Jamal Lyons",
 		"url": "https://www.jamallyons.com"
 	},
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/jamallyons/convex-doc.git"
+	},
+	"homepage": "https://github.com/jamallyons/convex-doc#readme",
+	"bugs": {
+		"url": "https://github.com/jamallyons/convex-doc/issues"
+	},
+	"keywords": [
+		"convex",
+		"documentation",
+		"api-docs",
+		"cli",
+		"developer-tools"
+	],
+	"engines": {
+		"node": ">=18.0.0"
+	},
+	"license": "MIT",
 	"devDependencies": {
 		"@biomejs/biome": "2.4.6",
 		"@types/node": "^25.3.5",
