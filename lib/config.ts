@@ -1,4 +1,4 @@
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { isAbsolute, join, resolve } from "node:path";
 
 export interface ConvexDocFunctionCustomization {
@@ -167,7 +167,41 @@ function loadConfigFile(cwd: string): {
 } {
 	const configPath = join(cwd, "convexdoc.config.json");
 	if (!existsSync(configPath)) {
-		return { data: {} };
+		// When no config is present, scaffold a default one for the user.
+		const defaultConfig: ConvexDocConfigFile = {
+			projectDir: ".",
+			serverPort: DEFAULT_SERVER_PORT,
+			docsDir: DEFAULT_DOCS_DIR,
+			deploymentUrl: "",
+			adminKey: "",
+			httpActionDeployUrl: DEFAULT_HTTP_ACTION_DEPLOY_URL,
+			verboseLogs: false,
+			disableFunctionRunner: false,
+			deploymentEnv: "dev",
+			customization: {
+				theme: {
+					accent: "",
+				},
+				// Keys can be added by the user, e.g. "tasks", "lists"
+				modules: {},
+				// Default true (hide links) matches normalizeCustomization behavior.
+				hideConvexDocsLinks: true,
+				// Users can point this to "./landing.md" or "./README.md"
+				landingPage: "",
+				// Users can add things like "internalQuery", "internalMutation"
+				excludeFunctionTypes: [],
+			},
+		};
+		try {
+			writeFileSync(
+				configPath,
+				`${JSON.stringify(defaultConfig, null, 2)}\n`,
+				"utf-8",
+			);
+		} catch {
+			// Best-effort: if we cannot write the file, continue with in-memory defaults.
+		}
+		return { data: defaultConfig, path: configPath };
 	}
 	const raw = readFileSync(configPath, "utf-8");
 	const parsed = JSON.parse(raw) as unknown;
