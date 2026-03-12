@@ -2,16 +2,6 @@
 	"name": "convexdoc",
 	"version": "0.1.6",
 	"description": "Documentation generator and interactive tester for Convex deployments",
-	"type": "module",
-	"bin": {
-		"convexdoc": "./dist/main.js"
-	},
-	"main": "./dist/main.js",
-	"types": "./dist/main.d.ts",
-	"files": [
-		"dist",
-		"assets"
-	],
 	"author": {
 		"name": "Jamal Lyons",
 		"url": "https://www.jamallyons.com"
@@ -32,9 +22,19 @@
 		"developer-tools"
 	],
 	"engines": {
-		"node": ">=18.0.0"
+		"node": ">=20.0.0"
 	},
 	"license": "MIT",
+	"type": "module",
+	"bin": {
+		"convexdoc": "./dist/main.js"
+	},
+	"main": "./dist/main.js",
+	"types": "./dist/main.d.ts",
+	"files": [
+		"dist",
+		"assets"
+	],
 	"scripts": {
 		"build": "tsc",
 		"dev": "tsx lib/main.ts",
