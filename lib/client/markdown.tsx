@@ -542,10 +542,11 @@ function Layout({
 													<li key={mod.name}>
 														<a
 															href={baseHref ? `${baseHref}${href}` : href}
-															className={`flex items-center justify-between gap-3 rounded-xl px-3 py-2 text-sm ring-1 ring-inset ${active
+															className={`flex items-center justify-between gap-3 rounded-xl px-3 py-2 text-sm ring-1 ring-inset ${
+																active
 																	? "bg-white/10 text-white ring-white/15"
 																	: "text-slate-300 ring-transparent hover:bg-white/5 hover:text-white"
-																}`}
+															}`}
 														>
 															<span className="truncate">
 																{moduleDisplayName(mod.name)}

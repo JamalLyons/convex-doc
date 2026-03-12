@@ -17,9 +17,9 @@ import { execa } from "execa";
 import { marked } from "marked";
 import { renderToStaticMarkup } from "react-dom/server";
 import ts from "typescript";
-import type { Customization } from "../config.js";
-import { TAILWIND_INPUT_CSS } from "../css.js";
+import { TAILWIND_INPUT_CSS } from "../client/css.js";
 import { IndexPage, ModulePage } from "../client/markdown.js";
+import type { Customization } from "../config.js";
 import { type ParsedFunctionSpec, Parser } from "../parser.js";
 import { Command } from "./mod.js";
 
@@ -528,9 +528,9 @@ export class GenerateCommand extends Command {
 		const normalized =
 			raw.length === 3
 				? raw
-					.split("")
-					.map((ch) => `${ch}${ch}`)
-					.join("")
+						.split("")
+						.map((ch) => `${ch}${ch}`)
+						.join("")
 				: raw;
 		if (!/^[0-9a-fA-F]{6}$/.test(normalized)) return null;
 		const int = Number.parseInt(normalized, 16);

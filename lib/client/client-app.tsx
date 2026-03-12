@@ -487,7 +487,8 @@ function RunnerPanel({
 			setResponseValue(value);
 			setResponseKind(ok ? "success" : "error");
 			setStatusLine(
-				`${ok ? "Success" : "Error"} • HTTP ${result.httpStatus}${result.durationMs ? ` • ${result.durationMs}ms` : ""
+				`${ok ? "Success" : "Error"} • HTTP ${result.httpStatus}${
+					result.durationMs ? ` • ${result.durationMs}ms` : ""
 				}`,
 			);
 		} catch (err) {
@@ -587,8 +588,8 @@ function RunnerPanel({
 						{statusLine || "Response"}
 					</div>
 					{responseKind === "error" &&
-						typeof responseValue === "string" &&
-						manifest.buildInfo?.verboseErrors ? (
+					typeof responseValue === "string" &&
+					manifest.buildInfo?.verboseErrors ? (
 						<button
 							type="button"
 							onClick={() => setShowErrorDetails((v) => !v)}
