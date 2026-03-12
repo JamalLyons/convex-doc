@@ -41,7 +41,7 @@ export class Cli {
 			.description(
 				"Documentation generator and interactive tester for Convex deployments",
 			)
-			.version("0.1.0");
+			.version("0.1.7");
 
 		this.specCommandBuilder();
 		this.generateCommandBuilder();
@@ -55,7 +55,7 @@ export class Cli {
 		return new CliConfig({ cwd: process.cwd(), ...options }).resolve();
 	}
 
-	private specCommandBuilder(): Command {
+	private specCommandBuilder(): CliBuilder {
 		const specCmd = new SpecCommand();
 		return this.cli
 			.command("spec")
@@ -109,7 +109,7 @@ export class Cli {
 			});
 	}
 
-	private generateCommandBuilder(): Command {
+	private generateCommandBuilder(): CliBuilder {
 		const specCmd = new SpecCommand();
 		const generateCmd = new GenerateCommand(this.parser);
 		return this.cli
@@ -173,7 +173,7 @@ export class Cli {
 			});
 	}
 
-	private serveCommandBuilder(): Command {
+	private serveCommandBuilder(): CliBuilder {
 		return this.cli
 			.command("serve")
 			.description("Serve the generated docs site locally")
@@ -223,7 +223,7 @@ export class Cli {
 			});
 	}
 
-	private startCommandBuilder(): Command {
+	private startCommandBuilder(): CliBuilder {
 		const specCmd = new SpecCommand();
 		const generateCmd = new GenerateCommand(this.parser);
 		return this.cli
