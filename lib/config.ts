@@ -1,6 +1,6 @@
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { isAbsolute, join, resolve } from "node:path";
-import { config as loadEnv } from "dotenv";
+import { parseEnv } from "node:util";
 
 export interface ConvexDocFunctionCustomization {
 	description?: string;
@@ -80,6 +80,7 @@ export interface ResolvedCliConfig {
 }
 
 export class CliConfig {
+	private env: Record<string, string>;
 	private projectDir: string;
 	private serverPort: number;
 	private docsDir: string;
@@ -110,16 +111,12 @@ export class CliConfig {
 
 	constructor(public options: ConfigOptions) {
 		const cwd = resolve(options.cwd ?? process.cwd());
-		// Load .env.local and .env from the working directory so Convex-style
-		// environment variables (e.g. NEXT_PUBLIC_CONVEX_URL, CONVEX_SITE_URL)
-		// are available for defaults.
-		loadEnv({ path: join(cwd, ".env.local"), override: false });
-		loadEnv({ path: join(cwd, ".env"), override: false });
+		this.env = this.buildEnv(cwd);
 		const fileConfig = this.loadFromFile(cwd);
 
 		const projectDirRaw =
 			options.projectDir ??
-			process.env.CONVEXDOC_PROJECT_DIR ??
+			this.env.CONVEXDOC_PROJECT_DIR ??
 			fileConfig.data.projectDir ??
 			cwd;
 
@@ -129,25 +126,25 @@ export class CliConfig {
 
 		const portRaw =
 			options.serverPort ??
-			process.env.CONVEXDOC_SERVER_PORT ??
+			this.env.CONVEXDOC_SERVER_PORT ??
 			fileConfig.data.serverPort ??
 			this.DEFAULT_SERVER_PORT;
 
 		const verboseLogs =
 			options.verboseLogs ??
-			this.toBoolean(process.env.CONVEXDOC_VERBOSE_LOGS) ??
+			this.toBoolean(this.env.CONVEXDOC_VERBOSE_LOGS) ??
 			fileConfig.data.verboseLogs ??
 			false;
 
 		const disableFunctionRunner =
 			options.disableFunctionRunner ??
-			this.toBoolean(process.env.CONVEXDOC_DISABLE_FUNCTION_RUNNER) ??
+			this.toBoolean(this.env.CONVEXDOC_DISABLE_FUNCTION_RUNNER) ??
 			fileConfig.data.disableFunctionRunner ??
 			false;
 
 		const deploymentEnvRaw =
 			options.deploymentEnv ??
-			(process.env.CONVEXDOC_ENV as "dev" | "prod" | undefined) ??
+			(this.env.CONVEXDOC_ENV as "dev" | "prod" | undefined) ??
 			fileConfig.data.deploymentEnv ??
 			"dev";
 
@@ -163,16 +160,15 @@ export class CliConfig {
 			: resolve(projectDirResolved, docsDirRaw);
 		this.httpActionDeployUrl =
 			options.httpActionDeployUrl ??
-			process.env.CONVEXDOC_HTTP_ACTION_DEPLOY_URL ??
+			this.env.CONVEXDOC_HTTP_ACTION_DEPLOY_URL ??
 			fileConfig.data.httpActionDeployUrl ??
-			process.env.CONVEX_SITE_URL ??
+			this.env.CONVEX_SITE_URL ??
 			this.DEFAULT_HTTP_ACTION_DEPLOY_URL;
 		this.deploymentUrl =
 			fileConfig.data.deploymentUrl ??
-			process.env.CONVEX_URL ??
-			process.env.NEXT_PUBLIC_CONVEX_URL;
-		this.authToken =
-			fileConfig.data.authToken ?? process.env.CONVEXDOC_AUTH_TOKEN;
+			this.env.CONVEX_URL ??
+			this.env.NEXT_PUBLIC_CONVEX_URL;
+		this.authToken = fileConfig.data.authToken ?? this.env.CONVEXDOC_AUTH_TOKEN;
 		this.verboseLogs = verboseLogs;
 		this.disableFunctionRunner = disableFunctionRunner;
 		this.deploymentEnv = deploymentEnv;
@@ -180,6 +176,39 @@ export class CliConfig {
 			fileConfig.data.customization,
 		);
 		this.configPath = fileConfig.path;
+	}
+
+	private buildEnv(cwd: string): Record<string, string> {
+		const env: Record<string, string> = {};
+		for (const [key, value] of Object.entries(process.env)) {
+			if (typeof value === "string") {
+				env[key] = value;
+			}
+		}
+		this.mergeEnvFile(join(cwd, ".env.local"), env);
+		this.mergeEnvFile(join(cwd, ".env"), env);
+		return env;
+	}
+
+	private mergeEnvFile(path: string, env: Record<string, string>): void {
+		if (!existsSync(path)) return;
+		let raw: string;
+		try {
+			raw = readFileSync(path, "utf-8");
+		} catch {
+			return;
+		}
+		try {
+			const parsed = parseEnv(raw);
+			for (const [key, value] of Object.entries(parsed)) {
+				if (value == null) continue;
+				if (env[key] === undefined) {
+					env[key] = value;
+				}
+			}
+		} catch {
+			// Ignore invalid .env contents and continue with other sources.
+		}
 	}
 
 	public resolve(): ResolvedCliConfig {
