@@ -1,7 +1,7 @@
 import { existsSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import chalk from "chalk";
-import { Command } from "commander";
+import { Command as CliBuilder } from "commander";
 import ora from "ora";
 import { GenerateCommand } from "./cmd/generate.js";
 import { SpecCommand } from "./cmd/spec.js";
@@ -27,11 +27,11 @@ interface ServeCliOptions {
 }
 
 export class Cli {
-	private readonly cli: Command;
+	private readonly cli: CliBuilder;
 	private readonly parser: Parser;
 
 	public constructor() {
-		this.cli = new Command();
+		this.cli = new CliBuilder();
 		this.parser = new Parser();
 	}
 
