@@ -3,20 +3,15 @@ import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import test from "node:test";
 import { fileURLToPath } from "node:url";
-import {
-	filterSpecByFunctionTypes,
-	formatValidator,
-	getFunctionName,
-	getModuleName,
-	parseFunctionSpec,
-} from "../lib/parser.ts";
+import { Parser } from "../lib/parser.ts";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const SPEC_PATH = join(__dirname, "./spec.json");
 
 test("parsed function spec has consistent modules, identifiers, and summary", () => {
 	const raw = JSON.parse(readFileSync(SPEC_PATH, "utf-8"));
-	const parsed = parseFunctionSpec(raw);
+	const parser = new Parser();
+	const parsed = parser.run(raw);
 
 	// Summary should match the raw list length.
 	assert.equal(parsed.summary.total, parsed.raw.length);
@@ -34,11 +29,11 @@ test("parsed function spec has consistent modules, identifiers, and summary", ()
 		for (const fn of mod.functions) {
 			assert.equal(
 				mod.name,
-				getModuleName(fn.identifier),
+				parser.getModuleName(fn.identifier),
 				`module name mismatch for ${fn.identifier}`,
 			);
 			// getFunctionName should always return the suffix part of the identifier.
-			const name = getFunctionName(fn.identifier);
+			const name = parser.getFunctionName(fn.identifier);
 			assert.ok(
 				typeof name === "string" && name.length > 0,
 				`invalid function name for ${fn.identifier}`,
@@ -49,16 +44,20 @@ test("parsed function spec has consistent modules, identifiers, and summary", ()
 
 test("formatValidator produces stable strings for all validators in the spec", () => {
 	const raw = JSON.parse(readFileSync(SPEC_PATH, "utf-8"));
-	const parsed = parseFunctionSpec(raw);
+	const parser = new Parser();
+	const parsed = parser.run(raw);
+	const anyParser = parser as unknown as {
+		formatValidator: (v: unknown) => string;
+	};
 
 	for (const fn of parsed.raw) {
 		if (fn.args) {
-			const formatted = formatValidator(fn.args);
+			const formatted = anyParser.formatValidator(fn.args);
 			assert.equal(typeof formatted, "string");
 			assert.ok(formatted.length > 0);
 		}
 		if (fn.returns) {
-			const formatted = formatValidator(fn.returns);
+			const formatted = anyParser.formatValidator(fn.returns);
 			assert.equal(typeof formatted, "string");
 			assert.ok(formatted.length > 0);
 		}
@@ -67,10 +66,11 @@ test("formatValidator produces stable strings for all validators in the spec", (
 
 test("filterSpecByFunctionTypes keeps summaries and groups consistent", () => {
 	const raw = JSON.parse(readFileSync(SPEC_PATH, "utf-8"));
-	const parsed = parseFunctionSpec(raw);
+	const parser = new Parser();
+	const parsed = parser.run(raw);
 
 	const exclude = ["query", "mutation", "action", "httpAction"];
-	const filtered = filterSpecByFunctionTypes(parsed, exclude);
+	const filtered = parser.filterByFunction(parsed, exclude);
 
 	// No excluded function types should remain.
 	for (const fn of filtered.raw) {
@@ -88,10 +88,10 @@ test("filterSpecByFunctionTypes keeps summaries and groups consistent", () => {
 		for (const fn of mod.functions) {
 			assert.equal(
 				mod.name,
-				getModuleName(fn.identifier),
+				parser.getModuleName(fn.identifier),
 				`filtered module name mismatch for ${fn.identifier}`,
 			);
-			const name = getFunctionName(fn.identifier);
+			const name = parser.getFunctionName(fn.identifier);
 			assert.ok(
 				typeof name === "string" && name.length > 0,
 				`invalid function name in filtered spec for ${fn.identifier}`,

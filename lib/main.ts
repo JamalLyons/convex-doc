@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 
-import { Cli } from "./cli";
+import { Cli } from "./cli.js";
 
 async function main() {
 	await new Cli().run();

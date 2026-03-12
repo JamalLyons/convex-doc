@@ -3,12 +3,12 @@ import { join, resolve } from "node:path";
 import chalk from "chalk";
 import { Command } from "commander";
 import ora from "ora";
-import { GenerateCommand } from "./cmd/generate";
-import { SpecCommand } from "./cmd/spec";
-import { CliConfig, type ConfigOptions } from "./config";
-import { Parser } from "./parser";
-import { DocsServer } from "./server";
-import type { FunctionSpecOutput } from "./types";
+import { GenerateCommand } from "./cmd/generate.js";
+import { SpecCommand } from "./cmd/spec.js";
+import { CliConfig, type ConfigOptions } from "./config.js";
+import { Parser } from "./parser.js";
+import { DocsServer } from "./server.js";
+import type { FunctionSpecOutput } from "./types.js";
 
 interface SpecCliOptions {
 	projectDir?: string;

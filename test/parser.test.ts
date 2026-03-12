@@ -1,6 +1,11 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { parseFunctionSpec } from "../lib/parser.ts";
+import { type ParsedFunctionSpec, Parser } from "../lib/parser.ts";
+
+function parseFunctionSpec(raw: unknown): ParsedFunctionSpec {
+	const parser = new Parser();
+	return parser.run(raw);
+}
 
 test("parser groups unresolved identifiers under unresolved module", () => {
 	const parsed = parseFunctionSpec({

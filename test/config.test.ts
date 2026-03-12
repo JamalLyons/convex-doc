@@ -3,9 +3,9 @@ import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
-import { resolveAppConfig } from "../lib/config.ts";
+import { CliConfig } from "../lib/config.ts";
 
-test("resolveAppConfig reads defaults from convexdoc.config.json", () => {
+test("CliConfig reads defaults from convexdoc.config.json", () => {
 	const dir = mkdtempSync(join(tmpdir(), "convexdoc-config-"));
 	try {
 		writeFileSync(
@@ -29,7 +29,7 @@ test("resolveAppConfig reads defaults from convexdoc.config.json", () => {
 				2,
 			),
 		);
-		const config = resolveAppConfig({ cwd: dir });
+		const config = new CliConfig({ cwd: dir }).resolve();
 		assert.equal(config.serverPort, 4311);
 		assert.equal(config.docsDir, join(dir, "docs"));
 		assert.equal(config.httpActionDeployUrl, "http://localhost:9999");
@@ -45,21 +45,21 @@ test("resolveAppConfig reads defaults from convexdoc.config.json", () => {
 	}
 });
 
-test("resolveAppConfig gives CLI options highest precedence", () => {
+test("CliConfig gives CLI options highest precedence", () => {
 	const dir = mkdtempSync(join(tmpdir(), "convexdoc-config-"));
 	try {
 		writeFileSync(
 			join(dir, "convexdoc.config.json"),
 			JSON.stringify({ serverPort: 3001 }, null, 2),
 		);
-		const config = resolveAppConfig({ cwd: dir, serverPort: 4500 });
+		const config = new CliConfig({ cwd: dir, serverPort: 4500 }).resolve();
 		assert.equal(config.serverPort, 4500);
 	} finally {
 		rmSync(dir, { recursive: true, force: true });
 	}
 });
 
-test("resolveAppConfig falls back to env for deploymentUrl", () => {
+test("CliConfig falls back to env for deploymentUrl", () => {
 	const dir = mkdtempSync(join(tmpdir(), "convexdoc-config-"));
 	const prev = process.env.CONVEX_URL;
 	process.env.CONVEX_URL = "https://from-env.convex.cloud";
@@ -68,7 +68,7 @@ test("resolveAppConfig falls back to env for deploymentUrl", () => {
 			join(dir, "convexdoc.config.json"),
 			JSON.stringify({}, null, 2),
 		);
-		const config = resolveAppConfig({ cwd: dir });
+		const config = new CliConfig({ cwd: dir }).resolve();
 		assert.equal(config.deploymentUrl, "https://from-env.convex.cloud");
 		assert.deepEqual(config.customization, {});
 	} finally {

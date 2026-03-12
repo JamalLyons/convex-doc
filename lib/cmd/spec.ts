@@ -1,6 +1,6 @@
 import { execa } from "execa";
-import type { FunctionSpecOutput } from "../types";
-import { Command } from "./mod";
+import type { FunctionSpecOutput } from "../types.js";
+import { Command } from "./mod.js";
 
 export interface FunctionSpecOptions {
 	/** Path to the Convex project root. Defaults to cwd. */

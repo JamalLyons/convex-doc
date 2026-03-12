@@ -1,6 +1,6 @@
 import { existsSync } from "node:fs";
 import { join } from "node:path";
-import type { FunctionSpecOutput } from "../types";
+import type { FunctionSpecOutput } from "../types.js";
 
 /**
  * Base class for ConvexDoc CLI commands. Encapsulates shared helpers and

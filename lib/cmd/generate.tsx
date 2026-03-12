@@ -15,15 +15,13 @@ import { dirname, join, relative, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 import { execa } from "execa";
 import { marked } from "marked";
-// biome-ignore lint/correctness/noUnusedImports: Needed to remove the global import lint error
-import React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import ts from "typescript";
-import type { Customization } from "../config";
-import { TAILWIND_INPUT_CSS } from "../css";
-import { IndexPage, ModulePage } from "../markdown";
-import { type ParsedFunctionSpec, Parser } from "../parser";
-import { Command } from "./mod";
+import type { Customization } from "../config.js";
+import { TAILWIND_INPUT_CSS } from "../css.js";
+import { IndexPage, ModulePage } from "../client/markdown.js";
+import { type ParsedFunctionSpec, Parser } from "../parser.js";
+import { Command } from "./mod.js";
 
 interface HttpRoute {
 	method: string;
@@ -530,9 +528,9 @@ export class GenerateCommand extends Command {
 		const normalized =
 			raw.length === 3
 				? raw
-						.split("")
-						.map((ch) => `${ch}${ch}`)
-						.join("")
+					.split("")
+					.map((ch) => `${ch}${ch}`)
+					.join("")
 				: raw;
 		if (!/^[0-9a-fA-F]{6}$/.test(normalized)) return null;
 		const int = Number.parseInt(normalized, 16);
@@ -597,8 +595,8 @@ export class GenerateCommand extends Command {
 
 	private async bundleClientApp(outputDir: string): Promise<void> {
 		const moduleDir = dirname(fileURLToPath(import.meta.url));
-		const tsxEntry = join(moduleDir, "client-app.tsx");
-		const jsEntry = join(moduleDir, "client-app.js");
+		const tsxEntry = resolve(moduleDir, "../client/client-app.tsx");
+		const jsEntry = resolve(moduleDir, "../client/client-app.js");
 		const entry = existsSync(tsxEntry) ? tsxEntry : jsEntry;
 		const output = join(outputDir, "app.js");
 

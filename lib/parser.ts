@@ -4,7 +4,7 @@ import type {
 	ConvexFunctionType,
 	ConvexModule,
 	ConvexValidator,
-} from "./types";
+} from "./types.js";
 
 export interface ParsedFunctionSpec {
 	/** Raw functions from convex function-spec */
@@ -512,7 +512,7 @@ export class Parser {
 					: [];
 			return {
 				...obj,
-				members: memberList.map(this.normalizeValidator),
+				members: memberList.map((m) => this.normalizeValidator(m)),
 			};
 		}
 		return obj;
