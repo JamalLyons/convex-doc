@@ -129,14 +129,26 @@ export class GenerateCommand extends Command {
 		// Copy static assets (e.g. Convex logo) into docs output so header images work.
 		try {
 			const moduleDir = dirname(fileURLToPath(import.meta.url));
-			const logoSource = resolve(moduleDir, "../assets/convex.png");
-			const assetsDir = join(outputDir, "assets");
-			if (existsSync(logoSource)) {
-				mkdirSync(assetsDir, { recursive: true });
-				const logoTarget = join(assetsDir, "convex.png");
-				rmSync(logoTarget, { force: true });
-				writeFileSync(logoTarget, readFileSync(logoSource));
+			// Support both source (lib/) and built (dist/) layouts by walking up and
+			// looking for an assets/convex.png folder near the package root.
+			let logoSource: string | null = null;
+			let searchDir = moduleDir;
+			for (let i = 0; i < 4; i += 1) {
+				const candidate = resolve(searchDir, "assets/convex.png");
+				if (existsSync(candidate)) {
+					logoSource = candidate;
+					break;
+				}
+				const parent = dirname(searchDir);
+				if (parent === searchDir) break;
+				searchDir = parent;
 			}
+			if (!logoSource) return;
+			const assetsDir = join(outputDir, "assets");
+			mkdirSync(assetsDir, { recursive: true });
+			const logoTarget = join(assetsDir, "convex.png");
+			rmSync(logoTarget, { force: true });
+			writeFileSync(logoTarget, readFileSync(logoSource));
 		} catch {
 			// Best-effort; ignore asset copy failures.
 		}
