@@ -55,28 +55,20 @@ export abstract class Command {
 
 	/**
 	 * Parse and normalize the JSON output from `convex function-spec`. This
-	 * centralizes the slightly messy "find JSON in stdout, handle bare array"
-	 * behavior so it can be reused across commands if needed.
+	 * assumes a plain JSON value (object or array) and normalizes the two
+	 * supported shapes returned by Convex:
+	 *   1. { functions: [...] }
+	 *   2. [...]  (bare array of functions)
 	 */
 	protected parseFunctionSpecOutput(stdout: string): FunctionSpecOutput {
-		const jsonStart = stdout.search(/[{[]/);
-		if (jsonStart === -1) {
-			throw new Error(
-				`Could not find JSON in \`convex function-spec\` output.\n\nRaw output:\n${stdout}`,
-			);
-		}
-
-		const jsonStr = stdout.slice(jsonStart);
-
 		try {
-			const parsed = JSON.parse(jsonStr);
+			const direct = JSON.parse(stdout.trim());
 
-			// Normalize: bare array → { functions: [...] }
-			if (Array.isArray(parsed)) {
-				return { functions: parsed };
+			if (Array.isArray(direct)) {
+				return { functions: direct };
 			}
 
-			return parsed as FunctionSpecOutput;
+			return direct as FunctionSpecOutput;
 		} catch {
 			throw new Error(
 				`Failed to parse JSON from \`convex function-spec\`.\n\nRaw output:\n${stdout}`,

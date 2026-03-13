@@ -27,6 +27,8 @@ THE SOFTWARE.
 ---------------------------------------------------------------------------*/
 
 import { execa } from "execa";
+import { existsSync, readFileSync, readdirSync, unlinkSync } from "node:fs";
+import { resolve } from "node:path";
 import type { FunctionSpecOutput } from "../types.js";
 import { Command } from "./mod.js";
 
@@ -55,26 +57,49 @@ export class SpecCommand extends Command {
 		if (opts.deploymentEnv === "prod") {
 			args.push("--prod");
 		}
+		args.push("--file");
 		const env: Record<string, string> = {};
 
 		if (opts.deploymentUrl) {
 			env.CONVEX_URL = opts.deploymentUrl;
 		}
 
-		let stdout: string;
+		const beforeSpecFiles = new Set(
+			this.listGeneratedSpecFiles(projectDir).map((f) => f.toLowerCase()),
+		);
+		let stdout = "";
+		let stderr = "";
+		let generatedSpecPath: string | null = null;
 
 		try {
 			const result = await execa("npx", args, {
 				cwd: projectDir,
 				env: { ...process.env, ...env },
-				// Capture stdout — the JSON spec is printed there
+				// Capture output so we can locate the generated spec file path.
 				stdout: "pipe",
 				stderr: "pipe",
 			});
-			stdout = result.stdout;
+			stdout = result.stdout ?? "";
+			stderr = result.stderr ?? "";
+			generatedSpecPath = this.resolveGeneratedSpecPath(
+				projectDir,
+				`${stdout}\n${stderr}`,
+				beforeSpecFiles,
+			);
+			if (!generatedSpecPath || !existsSync(generatedSpecPath)) {
+				throw new Error(
+					"Convex CLI did not report or create a function spec file.",
+				);
+			}
+			const fileContent = readFileSync(generatedSpecPath, "utf-8");
+			return this.parseFunctionSpecOutput(fileContent);
 		} catch (err: unknown) {
 			const execaErr = err as { stderr?: string; message?: string };
-			const hint = execaErr.stderr ?? execaErr.message ?? String(err);
+			const hint =
+				execaErr.stderr ??
+				execaErr.message ??
+				`${stdout}\n${stderr}`.trim() ??
+				String(err);
 			throw new Error(
 				`Failed to run \`npx convex function-spec\`.\n\n` +
 					`Make sure:\n` +
@@ -83,8 +108,41 @@ export class SpecCommand extends Command {
 					`  • convex@1.15+ is installed\n\n` +
 					`Original error:\n${hint}`,
 			);
+		} finally {
+			if (generatedSpecPath && existsSync(generatedSpecPath)) {
+				try {
+					unlinkSync(generatedSpecPath);
+				} catch {
+					// Best-effort cleanup; ignore failures.
+				}
+			}
+		}
+	}
+
+	private listGeneratedSpecFiles(projectDir: string): string[] {
+		try {
+			return readdirSync(projectDir)
+				.filter((name) => /^function_spec_\d+\.json$/i.test(name))
+				.map((name) => resolve(projectDir, name));
+		} catch {
+			return [];
+		}
+	}
+
+	private resolveGeneratedSpecPath(
+		projectDir: string,
+		combinedOutput: string,
+		beforeSpecFiles: Set<string>,
+	): string | null {
+		const match = combinedOutput.match(/Wrote function spec to (.+)$/m);
+		if (match?.[1]?.trim()) {
+			return resolve(projectDir, match[1].trim());
 		}
 
-		return this.parseFunctionSpecOutput(stdout);
+		const candidates = this.listGeneratedSpecFiles(projectDir).filter(
+			(f) => !beforeSpecFiles.has(f.toLowerCase()),
+		);
+		if (!candidates.length) return null;
+		return candidates[candidates.length - 1] ?? null;
 	}
 }

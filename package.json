@@ -1,6 +1,6 @@
 {
 	"name": "convexdoc",
-	"version": "0.1.7",
+	"version": "0.1.8",
 	"description": "Documentation generator and interactive tester for Convex deployments",
 	"author": {
 		"name": "Jamal Lyons",
