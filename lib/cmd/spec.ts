@@ -27,7 +27,7 @@ THE SOFTWARE.
 ---------------------------------------------------------------------------*/
 
 import { existsSync, readdirSync, readFileSync, unlinkSync } from "node:fs";
-import { join, resolve } from "node:path";
+import { resolve } from "node:path";
 import { x } from "tinyexec";
 import type { FunctionSpecOutput } from "../types.js";
 import { Command } from "./mod.js";
@@ -137,46 +137,5 @@ export class SpecCommand extends Command {
 		);
 		if (!candidates.length) return null;
 		return candidates[candidates.length - 1] ?? null;
-	}
-
-	/**
-	 * Validate that the given directory looks like a Convex project. All
-	 * commands that talk to Convex should call this before running.
-	 */
-	private ensureConvexProject(dir: string): void {
-		const hasConvexDir = existsSync(join(dir, "convex"));
-		const hasEnvFile =
-			existsSync(join(dir, ".env.local")) || existsSync(join(dir, ".env"));
-
-		if (!hasConvexDir && !hasEnvFile) {
-			throw new Error(
-				`No Convex project found at: ${dir}\n` +
-					`Expected a \`convex/\` directory. ` +
-					`Use --project-dir to point at your Convex project root.`,
-			);
-		}
-	}
-
-	/**
-	 * Parse and normalize the JSON output from `convex function-spec`. This
-	 * assumes a plain JSON value (object or array) and normalizes the two
-	 * supported shapes returned by Convex:
-	 *   1. { functions: [...] }
-	 *   2. [...]  (bare array of functions)
-	 */
-	private parseFunctionSpecOutput(stdout: string): FunctionSpecOutput {
-		try {
-			const direct = JSON.parse(stdout.trim());
-
-			if (Array.isArray(direct)) {
-				return { functions: direct };
-			}
-
-			return direct as FunctionSpecOutput;
-		} catch {
-			throw new Error(
-				`Failed to parse JSON from \`convex function-spec\`.\n\nRaw output:\n${stdout}`,
-			);
-		}
 	}
 }

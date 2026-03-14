@@ -29,8 +29,8 @@ THE SOFTWARE.
 import { existsSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { Command as CliBuilder } from "commander";
-import { Spinner } from 'picospinner'
 import picocolors from "picocolors";
+import { Spinner } from "picospinner";
 import { GenerateCommand } from "./cmd/generate.js";
 import { SpecCommand } from "./cmd/spec.js";
 import { CliConfig, type ConfigOptions } from "./config.js";
