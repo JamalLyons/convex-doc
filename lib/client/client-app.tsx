@@ -206,12 +206,7 @@ function sampleFromValidator(value: unknown): unknown {
 		return members.length ? sampleFromValidator(members[0]) : null;
 	}
 	if (type === "id" || type === "string" || type === "bytes") return "";
-	if (
-		type === "number" ||
-		type === "float64" ||
-		type === "bigint" ||
-		type === "int64"
-	) {
+	if (type === "number" || type === "float64" || type === "int64") {
 		return 0;
 	}
 	if (type === "boolean") return false;

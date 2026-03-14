@@ -28,6 +28,7 @@ THE SOFTWARE.
 
 import { existsSync } from "node:fs";
 import { join } from "node:path";
+import typia from "typia";
 import type { FunctionSpecOutput } from "../types.js";
 
 /**
@@ -64,10 +65,10 @@ export abstract class Command {
 	 */
 	protected parseFunctionSpecOutput(stdout: string): FunctionSpecOutput {
 		try {
-			const direct = JSON.parse(stdout.trim());
+			const direct = typia.json.assertParse<unknown>(stdout.trim());
 
 			if (Array.isArray(direct)) {
-				return { functions: direct };
+				return { functions: direct as Record<string, unknown>[] };
 			}
 
 			return direct as FunctionSpecOutput;

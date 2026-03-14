@@ -1,6 +1,6 @@
 {
 	"name": "convexdoc",
-	"version": "0.1.10",
+	"version": "0.2.0",
 	"description": "Documentation generator and interactive tester for Convex deployments",
 	"author": {
 		"name": "Jamal Lyons",
@@ -37,32 +37,33 @@
 	],
 	"scripts": {
 		"build": "tsc",
-		"dev": "tsx lib/main.ts",
-		"test": "tsx --test test/**/*.test.ts",
+		"dev": "pnpm build && node dist/main.js",
+		"test": "node --test test/**/*.test.ts",
 		"lint": "biome check .",
 		"lint:fix": "biome check --write .",
 		"convex:dev": "pnpm dlx convex dev --once",
 		"clean": "rm -rf dist docs",
 		"prepublishOnly": "pnpm run clean && pnpm run build && pnpm test",
-		"release": "pnpm run clean && pnpm run build && pnpm test && pnpm publish --access public"
+		"release": "pnpm run clean && pnpm run build && pnpm test && pnpm publish --access public",
+		"prepare": "ts-patch install"
 	},
 	"dependencies": {
 		"commander": "^14.0.3",
-		"convex": "^1.32.0",
 		"marked": "^17.0.4",
 		"picocolors": "^1.1.1",
 		"picospinner": "^3.0.0",
 		"react": "^19.2.4",
 		"react-dom": "^19.2.4",
-		"tailwindcss": "^3.4.17",
 		"tinyexec": "^1.0.4",
-		"typescript": "^5.9.3"
+		"typia": "^12.0.0"
 	},
 	"devDependencies": {
 		"@biomejs/biome": "2.4.6",
 		"@types/node": "^25.3.5",
 		"@types/react": "^19.2.14",
 		"@types/react-dom": "^19.2.3",
-		"tsx": "^4.21.0"
+		"convex": "^1.33.1",
+		"ts-patch": "^3.3.0",
+		"typescript": "~5.9.3"
 	}
 }

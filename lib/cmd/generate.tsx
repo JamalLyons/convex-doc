@@ -45,6 +45,7 @@ import { marked } from "marked";
 import { renderToStaticMarkup } from "react-dom/server";
 import { x } from "tinyexec";
 import ts from "typescript";
+import typia from "typia";
 import { IndexPage, ModulePage } from "../client/components.js";
 import { TAILWIND_INPUT_CSS } from "../client/css.js";
 import type { Customization } from "../config.js";
@@ -196,6 +197,97 @@ export class GenerateCommand extends Command {
 		};
 	}
 
+	/**
+	 * Normalize validator-like objects so typia never sees undefined for array/record
+	 * properties (avoids "Cannot read properties of undefined (reading 'map')").
+	 */
+	private normalizeValidatorForManifest(v: unknown): unknown {
+		if (v == null || typeof v !== "object") return v;
+		const o = v as Record<string, unknown>;
+		const type = o.type as string | undefined;
+		if (type === "union") {
+			const members = Array.isArray(o.members) ? o.members : [];
+			return {
+				...o,
+				members: members.map((m) => this.normalizeValidatorForManifest(m)),
+			};
+		}
+		if (type === "object") {
+			const fields = o.fields && typeof o.fields === "object" ? o.fields : {};
+			const value = o.value && typeof o.value === "object" ? o.value : {};
+			const normalizedFields: Record<string, unknown> = {};
+			for (const [k, f] of Object.entries(fields)) {
+				const field = f as Record<string, unknown>;
+				if (field && typeof field.fieldType !== "undefined") {
+					normalizedFields[k] = {
+						...field,
+						fieldType: this.normalizeValidatorForManifest(field.fieldType),
+					};
+				} else {
+					normalizedFields[k] = field;
+				}
+			}
+			const normalizedValue: Record<string, unknown> = {};
+			for (const [k, f] of Object.entries(value)) {
+				const field = f as Record<string, unknown>;
+				if (field && typeof field.fieldType !== "undefined") {
+					normalizedValue[k] = {
+						...field,
+						fieldType: this.normalizeValidatorForManifest(field.fieldType),
+					};
+				} else {
+					normalizedValue[k] = field;
+				}
+			}
+			return { ...o, fields: normalizedFields, value: normalizedValue };
+		}
+		if (type === "array" && typeof o.items !== "undefined") {
+			return { ...o, items: this.normalizeValidatorForManifest(o.items) };
+		}
+		if (type === "record") {
+			const keys = this.normalizeValidatorForManifest(o.keys);
+			const values = o.values && typeof o.values === "object" ? o.values : {};
+			const valuesOut = values as Record<string, unknown>;
+			if (typeof valuesOut.fieldType !== "undefined") {
+				return {
+					...o,
+					keys,
+					values: {
+						...valuesOut,
+						fieldType: this.normalizeValidatorForManifest(valuesOut.fieldType),
+					},
+				};
+			}
+			return { ...o, keys, values: valuesOut };
+		}
+		return o;
+	}
+
+	/** Ensure customization has no undefined arrays/records so typia can stringify. */
+	private normalizeCustomizationForManifest(
+		customization: Customization,
+	): Customization {
+		const modules = customization.modules ?? {};
+		const modulesNormalized: Record<
+			string,
+			{
+				description?: string;
+				functions?: Record<string, { description?: string }>;
+			}
+		> = {};
+		for (const [name, mod] of Object.entries(modules)) {
+			modulesNormalized[name] = {
+				...(mod ?? {}),
+				functions: mod?.functions ?? {},
+			};
+		}
+		return {
+			...customization,
+			excludeFunctionTypes: customization.excludeFunctionTypes ?? [],
+			modules: modulesNormalized,
+		};
+	}
+
 	private writeManifest(
 		outputDir: string,
 		filteredSpec: ParsedFunctionSpec,
@@ -223,8 +315,12 @@ export class GenerateCommand extends Command {
 				moduleDisplayName: this.moduleDisplayName(moduleName),
 				functionType: fn.functionType,
 				visibility: fn.visibility?.kind ?? "public",
-				args: fn.args ?? null,
-				returns: fn.returns ?? null,
+				args:
+					fn.args != null ? this.normalizeValidatorForManifest(fn.args) : null,
+				returns:
+					fn.returns != null
+						? this.normalizeValidatorForManifest(fn.returns)
+						: null,
 				httpMethod: fn.httpMethod ?? null,
 				httpPath: fn.httpPath ?? null,
 				href: `${moduleSlug}.html#${anchor}`,
@@ -233,7 +329,7 @@ export class GenerateCommand extends Command {
 
 		const manifest = {
 			buildInfo,
-			customization,
+			customization: this.normalizeCustomizationForManifest(customization),
 			summary: filteredSpec.summary,
 			modules: filteredSpec.modules.map((m) => ({
 				name: m.name,
@@ -246,7 +342,7 @@ export class GenerateCommand extends Command {
 		};
 		writeFileSync(
 			join(outputDir, "convexdoc.manifest.json"),
-			JSON.stringify(manifest, null, 2),
+			typia.json.stringify(manifest),
 			"utf-8",
 		);
 	}
@@ -348,17 +444,26 @@ export class GenerateCommand extends Command {
 		);
 
 		try {
-			const tailwindBin = require.resolve("tailwindcss/lib/cli.js");
-			await x("node", [
-				tailwindBin,
-				"-i",
-				inputCssPath,
-				"-o",
-				outputCssPath,
-				"-c",
-				tailwindConfigPath,
-				"--minify",
-			]);
+			// Use npx so Tailwind’s CLI entry point is resolved by the package; avoids
+			// depending on tailwindcss/lib/cli.js across major versions.
+			const tailwindPkg = require.resolve("tailwindcss/package.json");
+			const packageRoot = dirname(dirname(tailwindPkg));
+			await x(
+				"npx",
+				[
+					"tailwindcss@3.4.17",
+					"-i",
+					inputCssPath,
+					"-o",
+					outputCssPath,
+					"-c",
+					tailwindConfigPath,
+					"--minify",
+				],
+				{
+					nodeOptions: { cwd: packageRoot },
+				},
+			);
 		} finally {
 			try {
 				unlinkSync(tailwindConfigPath);
@@ -645,6 +750,7 @@ export class GenerateCommand extends Command {
 			"esbuild@0.25.10",
 			entry,
 			"--bundle",
+			"--minify",
 			"--platform=browser",
 			"--format=esm",
 			"--target=es2020",

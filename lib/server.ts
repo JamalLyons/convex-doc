@@ -30,6 +30,7 @@ import { createReadStream, existsSync, statSync } from "node:fs";
 import { createServer } from "node:http";
 import { join, normalize } from "node:path";
 import picocolors from "picocolors";
+import typia from "typia";
 
 export interface RunRequestBody {
 	functionType: "query" | "mutation" | "action";
@@ -169,7 +170,7 @@ export class DocsServer {
 			res.statusCode = 403;
 			res.setHeader("content-type", "application/json; charset=utf-8");
 			res.end(
-				JSON.stringify({
+				typia.json.stringify({
 					status: "error",
 					errorMessage: "Function runner is disabled.",
 				}),
@@ -185,7 +186,7 @@ export class DocsServer {
 			res.statusCode = 400;
 			res.setHeader("content-type", "application/json; charset=utf-8");
 			res.end(
-				JSON.stringify({
+				typia.json.stringify({
 					status: "error",
 					errorMessage: "Invalid JSON body",
 				}),
@@ -208,7 +209,7 @@ export class DocsServer {
 			res.statusCode = 400;
 			res.setHeader("content-type", "application/json; charset=utf-8");
 			res.end(
-				JSON.stringify({
+				typia.json.stringify({
 					status: "error",
 					errorMessage: "Body must include { functionType, path }",
 				}),
@@ -222,7 +223,7 @@ export class DocsServer {
 			res.statusCode = 500;
 			res.setHeader("content-type", "application/json; charset=utf-8");
 			res.end(
-				JSON.stringify({
+				typia.json.stringify({
 					status: "error",
 					errorMessage:
 						"CONVEX_URL is not set. Run from a configured Convex project or export CONVEX_URL.",
@@ -248,7 +249,7 @@ export class DocsServer {
 		const upstream = await fetch(endpoint, {
 			method: "POST",
 			headers,
-			body: JSON.stringify({ path, args, format: "json" }),
+			body: typia.json.stringify({ path, args, format: "json" }),
 		});
 		const text = await upstream.text();
 		const dtMs = Date.now() - t0;
@@ -273,7 +274,7 @@ export class DocsServer {
 			res.statusCode = 404;
 			res.setHeader("content-type", "application/json; charset=utf-8");
 			res.end(
-				JSON.stringify({
+				typia.json.stringify({
 					status: "error",
 					errorMessage: "Manifest not found",
 				}),
@@ -349,7 +350,7 @@ export class DocsServer {
 		res.statusCode = 500;
 		res.setHeader("content-type", "application/json; charset=utf-8");
 		res.end(
-			JSON.stringify({
+			typia.json.stringify({
 				status: "error",
 				errorMessage: (err as Error).message ?? String(err),
 			}),
@@ -381,6 +382,8 @@ export class DocsServer {
 		for await (const chunk of req) chunks.push(chunk as Uint8Array);
 		const raw = Buffer.concat(chunks).toString("utf-8");
 		if (!raw.trim()) return null;
-		return JSON.parse(raw);
+
+		const parsed = typia.json.isParse<Partial<RunRequestBody>>(raw);
+		return parsed;
 	}
 }

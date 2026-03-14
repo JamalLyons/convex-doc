@@ -29,6 +29,7 @@ THE SOFTWARE.
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { isAbsolute, join, resolve } from "node:path";
 import { parseEnv } from "node:util";
+import typia, { type tags } from "typia";
 
 export interface ConvexDocFunctionCustomization {
 	description?: string;
@@ -55,10 +56,10 @@ export interface Customization {
 
 export interface ConfigFile {
 	projectDir?: string;
-	serverPort?: number;
+	serverPort?: number & tags.Type<"uint32"> & tags.Maximum<65535>;
 	docsDir?: string;
-	httpActionDeployUrl?: string;
-	deploymentUrl?: string;
+	httpActionDeployUrl?: string & tags.Format<"url">;
+	deploymentUrl?: string & tags.Format<"url">;
 	authToken?: string;
 	verboseLogs?: boolean;
 	/**
@@ -79,11 +80,29 @@ export interface ConfigFile {
 	customization?: Customization;
 }
 
+/** Default config written by `convexdoc init` and used when no config file exists. */
+export const DEFAULT_CONFIG_FILE: ConfigFile = {
+	projectDir: ".",
+	serverPort: 3000,
+	docsDir: "docs",
+	authToken: "",
+	verboseLogs: false,
+	disableFunctionRunner: false,
+	deploymentEnv: "dev",
+	customization: {
+		theme: { accent: "" },
+		modules: {},
+		hideConvexDocsLinks: true,
+		landingPage: "",
+		excludeFunctionTypes: [],
+	},
+};
+
 export interface ConfigOptions {
 	cwd?: string;
 	projectDir?: string;
-	serverPort?: string | number;
-	httpActionDeployUrl?: string;
+	serverPort?: string | (number & tags.Type<"uint32"> & tags.Maximum<65535>);
+	httpActionDeployUrl?: string & tags.Format<"url">;
 	verboseLogs?: boolean;
 	disableFunctionRunner?: boolean;
 	/**
@@ -95,10 +114,10 @@ export interface ConfigOptions {
 
 export interface ResolvedCliConfig {
 	projectDir: string;
-	serverPort: number;
+	serverPort: number & tags.Type<"uint32"> & tags.Maximum<65535>;
 	docsDir: string;
-	httpActionDeployUrl: string;
-	deploymentUrl?: string;
+	httpActionDeployUrl: string & tags.Format<"url">;
+	deploymentUrl?: string & tags.Format<"url">;
 	authToken?: string;
 	verboseLogs: boolean;
 	disableFunctionRunner: boolean;
@@ -262,47 +281,28 @@ export class CliConfig {
 		const configPath = join(cwd, "convexdoc.config.json");
 		if (!existsSync(configPath)) {
 			// When no config is present, scaffold a default one for the user.
-			const defaultConfig: ConfigFile = {
-				projectDir: ".",
-				serverPort: this.DEFAULT_SERVER_PORT,
-				docsDir: this.DEFAULT_DOCS_DIR,
-				authToken: "",
-				verboseLogs: false,
-				disableFunctionRunner: false,
-				deploymentEnv: "dev",
-				customization: {
-					theme: {
-						accent: "",
-					},
-					// Keys can be added by the user, e.g. "tasks", "lists"
-					modules: {},
-					// Default true (hide links) matches normalizeCustomization behavior.
-					hideConvexDocsLinks: true,
-					// Users can point this to "./landing.md" or "./README.md"
-					landingPage: "",
-					// Users can add things like "internalQuery", "internalMutation"
-					excludeFunctionTypes: [],
-				},
-			};
 			try {
 				writeFileSync(
 					configPath,
-					`${JSON.stringify(defaultConfig, null, 2)}\n`,
+					`${typia.json.stringify(DEFAULT_CONFIG_FILE)}\n`,
 					"utf-8",
 				);
 			} catch {
 				// Best-effort: if we cannot write the file, continue with in-memory defaults.
 			}
-			return { data: defaultConfig, path: configPath };
+			return { data: DEFAULT_CONFIG_FILE, path: configPath };
 		}
 		const raw = readFileSync(configPath, "utf-8");
-		const parsed = JSON.parse(raw) as unknown;
-		if (!parsed || typeof parsed !== "object") {
+		try {
+			return {
+				data: typia.json.assertParse<ConfigFile>(raw),
+				path: configPath,
+			};
+		} catch (e) {
 			throw new Error(
-				`Invalid config at ${configPath}: expected a JSON object`,
+				`Invalid config at ${configPath}: expected a valid JSON object matching ConfigFile schema.\n${String(e)}`,
 			);
 		}
-		return { data: parsed as ConfigFile, path: configPath };
 	}
 
 	private parsePort(value: string | number, fallback: number): number {

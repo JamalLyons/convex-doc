@@ -172,7 +172,6 @@ function renderLiteral(value: unknown): ReactNode {
 	if (typeof value === "string") {
 		return <span style={TOKENS.stringLiteral}>"{value}"</span>;
 	}
-	if (typeof value === "bigint") return String(value);
 	if (typeof value === "number" || typeof value === "boolean")
 		return String(value);
 	if (value == null) {

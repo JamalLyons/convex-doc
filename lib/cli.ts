@@ -31,7 +31,9 @@ import { join, resolve } from "node:path";
 import { Command as CliBuilder } from "commander";
 import picocolors from "picocolors";
 import { Spinner } from "picospinner";
+import typia from "typia";
 import { GenerateCommand } from "./cmd/generate.js";
+import { InitCommand } from "./cmd/init.js";
 import { SpecCommand } from "./cmd/spec.js";
 import { CliConfig, type ConfigOptions } from "./config.js";
 import { Parser } from "./parser.js";
@@ -46,6 +48,11 @@ interface SpecCliOptions {
 
 interface GenerateCliOptions {
 	projectDir?: string;
+}
+
+interface InitCliOptions {
+	projectDir?: string;
+	force?: boolean;
 }
 
 interface ServeCliOptions {
@@ -72,6 +79,7 @@ export class Cli {
 			.version("0.1.7");
 
 		this.specCommandBuilder();
+		this.initCommandBuilder();
 		this.generateCommandBuilder();
 		this.serveCommandBuilder();
 		this.startCommandBuilder();
@@ -117,12 +125,12 @@ export class Cli {
 				// Write raw JSON to file if requested
 				if (opts.output) {
 					const outPath = resolve(opts.output);
-					writeFileSync(outPath, JSON.stringify(rawSpec, null, 2));
+					writeFileSync(outPath, typia.json.stringify(rawSpec));
 					console.log(picocolors.green(`\n✓ Raw spec written to ${outPath}`));
 				}
 
 				if (opts.json) {
-					console.log(JSON.stringify(rawSpec, null, 2));
+					console.log(typia.json.stringify(rawSpec));
 					return;
 				}
 
@@ -135,6 +143,39 @@ export class Cli {
 					}
 				}
 				this.parser.print(parsed);
+			});
+	}
+
+	private initCommandBuilder(): CliBuilder {
+		const initCmd = new InitCommand();
+		return this.cli
+			.command("init")
+			.description(
+				"Create a convexdoc.config.json in the project with default options",
+			)
+			.option(
+				"-p, --project-dir <path>",
+				"Directory for the config file (default: cwd)",
+			)
+			.option("-f, --force", "Overwrite existing convexdoc.config.json")
+			.action(async (opts: InitCliOptions) => {
+				const dir = opts.projectDir ?? process.cwd();
+				try {
+					await initCmd.run({
+						projectDir: dir,
+						force: opts.force === true,
+					});
+					const configPath = join(resolve(dir), "convexdoc.config.json");
+					console.log(picocolors.green(`✓ Created ${configPath}`));
+					console.log(
+						picocolors.dim(
+							"Edit the file to customize docs, then run convexdoc generate.",
+						),
+					);
+				} catch (err: unknown) {
+					console.error(picocolors.red((err as Error).message));
+					process.exit(1);
+				}
 			});
 	}
 

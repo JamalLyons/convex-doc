@@ -12,7 +12,12 @@
 		"declaration": true,
 		"declarationMap": true,
 		"sourceMap": true,
-		"jsx": "react-jsx"
+		"jsx": "react-jsx",
+		"plugins": [
+			{
+				"transform": "typia/lib/transform"
+			}
+		]
 	},
 	"include": ["lib/**/*"],
 	"exclude": ["node_modules", "dist"]

@@ -27,11 +27,14 @@ THE SOFTWARE.
 ---------------------------------------------------------------------------*/
 
 import picocolors from "picocolors";
-import type {
-	ConvexFunctionSpec,
-	ConvexFunctionType,
-	ConvexModule,
-	ConvexValidator,
+import typia from "typia";
+import {
+	assertFunctionSpecOutput,
+	type ConvexFunctionSpec,
+	type ConvexFunctionType,
+	type ConvexModule,
+	type ConvexValidator,
+	type FunctionSpecOutput,
 } from "./types.js";
 
 export interface ParsedFunctionSpec {
@@ -435,14 +438,12 @@ export class Parser {
 			return this.normalizeValidator(value) as ConvexFunctionSpec["args"];
 		}
 		if (typeof value === "string") {
-			try {
-				const parsed = JSON.parse(value) as unknown;
-				return parsed && typeof parsed === "object"
-					? (this.normalizeValidator(parsed) as ConvexFunctionSpec["args"])
-					: null;
-			} catch {
-				return null;
-			}
+			const parsed = typia.json.isParse<Record<string, unknown> | unknown[]>(
+				value,
+			);
+			return parsed
+				? (this.normalizeValidator(parsed) as ConvexFunctionSpec["args"])
+				: null;
 		}
 		return null;
 	}
@@ -515,18 +516,11 @@ export class Parser {
 				fields: normalizedFields,
 			};
 		}
-		if (type === "array" || type === "set") {
+		if (type === "array") {
 			const itemValidator = obj.items ?? obj.value;
 			return {
 				...obj,
 				items: this.normalizeValidator(itemValidator),
-			};
-		}
-		if (type === "map") {
-			return {
-				...obj,
-				keys: this.normalizeValidator(obj.keys),
-				values: this.normalizeValidator(obj.values),
 			};
 		}
 		if (type === "record") {
@@ -557,26 +551,21 @@ export class Parser {
 	}
 
 	private validateRawOutput(raw: unknown): { functions: RawFunctionEntry[] } {
-		if (!raw || typeof raw !== "object") {
-			throw new Error("function-spec output must be a JSON object");
+		if (Array.isArray(raw)) {
+			return { functions: raw as RawFunctionEntry[] };
 		}
 
-		const obj = raw as Record<string, unknown>;
-
-		// Handle both formats:
-		// 1. { functions: [...] }  — standard
-		// 2. [...] — some versions return a bare array
-		if (Array.isArray(obj)) {
-			return { functions: obj as RawFunctionEntry[] };
-		}
-
-		if (!Array.isArray(obj.functions)) {
+		try {
+			assertFunctionSpecOutput(raw);
+			return {
+				functions: (raw as FunctionSpecOutput).functions as RawFunctionEntry[],
+			};
+		} catch (e) {
 			throw new Error(
 				'Expected function-spec JSON to have a "functions" array. ' +
-					"Run `npx convex function-spec` and check the output format.",
+					"Run `npx convex function-spec` and check the output format.\n" +
+					String(e),
 			);
 		}
-
-		return { functions: obj.functions as RawFunctionEntry[] };
 	}
 }

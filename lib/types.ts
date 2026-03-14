@@ -26,12 +26,13 @@ THE SOFTWARE.
 
 ---------------------------------------------------------------------------*/
 
+import typia, { type tags } from "typia";
+
 // ─── Validator Types ────────────────────────────────────────────────────────
 
 export type ConvexValidatorType =
 	| "null"
 	| "number"
-	| "bigint"
 	| "boolean"
 	| "string"
 	| "bytes"
@@ -39,8 +40,6 @@ export type ConvexValidatorType =
 	| "literal"
 	| "id"
 	| "array"
-	| "set"
-	| "map"
 	| "object"
 	| "record"
 	| "union"
@@ -57,10 +56,6 @@ export interface NullValidator extends ValidatorBase {
 
 export interface NumberValidator extends ValidatorBase {
 	type: "number" | "float64";
-}
-
-export interface BigIntValidator extends ValidatorBase {
-	type: "bigint" | "int64";
 }
 
 export interface BooleanValidator extends ValidatorBase {
@@ -81,28 +76,17 @@ export interface AnyValidator extends ValidatorBase {
 
 export interface LiteralValidator extends ValidatorBase {
 	type: "literal";
-	value: string | number | boolean | bigint;
+	value: string | number | boolean;
 }
 
 export interface IdValidator extends ValidatorBase {
 	type: "id";
-	tableName: string;
+	tableName: string & tags.MinLength<1>;
 }
 
 export interface ArrayValidator extends ValidatorBase {
 	type: "array";
 	items: ConvexValidator;
-}
-
-export interface SetValidator extends ValidatorBase {
-	type: "set";
-	items: ConvexValidator;
-}
-
-export interface MapValidator extends ValidatorBase {
-	type: "map";
-	keys: ConvexValidator;
-	values: ConvexValidator;
 }
 
 export interface ObjectField {
@@ -136,7 +120,6 @@ export interface UnionValidator extends ValidatorBase {
 export type ConvexValidator =
 	| NullValidator
 	| NumberValidator
-	| BigIntValidator
 	| BooleanValidator
 	| StringValidator
 	| BytesValidator
@@ -144,8 +127,6 @@ export type ConvexValidator =
 	| LiteralValidator
 	| IdValidator
 	| ArrayValidator
-	| SetValidator
-	| MapValidator
 	| ObjectValidator
 	| RecordValidator
 	| UnionValidator;
@@ -175,7 +156,7 @@ export interface ConvexFunctionSpec {
 // ─── Top-level function-spec output ─────────────────────────────────────────
 
 export interface FunctionSpecOutput {
-	url?: string;
+	url?: string & tags.Format<"url">;
 	functions: Record<string, unknown>[];
 }
 
@@ -187,3 +168,19 @@ export interface ConvexModule {
 	name: string;
 	functions: ConvexFunctionSpec[];
 }
+
+// ─── Validation Exports ───────────────────────────────────────────────
+
+/** Runtime validation function to check if raw object matches the parsed ConvexDoc spec */
+export const isConvexFunctionSpec = typia.createIs<ConvexFunctionSpec>();
+
+/** Runtime assertion function, throws a standard Error if invalid */
+export const assertConvexFunctionSpec =
+	typia.createAssert<ConvexFunctionSpec>();
+
+/** Validate the top-level raw function spec output from a convex deploy */
+export const isFunctionSpecOutput = typia.createIs<FunctionSpecOutput>();
+
+/** Assertion function for raw function spec output */
+export const assertFunctionSpecOutput =
+	typia.createAssert<FunctionSpecOutput>();
