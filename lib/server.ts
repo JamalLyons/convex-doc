@@ -29,7 +29,7 @@ THE SOFTWARE.
 import { createReadStream, existsSync, statSync } from "node:fs";
 import { createServer } from "node:http";
 import { join, normalize } from "node:path";
-import chalk from "chalk";
+import picocolors from "picocolors";
 
 export interface RunRequestBody {
 	functionType: "query" | "mutation" | "action";
@@ -99,24 +99,24 @@ export class DocsServer {
 
 		const log = (message: string) => {
 			if (!verboseLogs) return;
-			console.log(chalk.dim(`[convexdoc:${requestId}] `) + message);
+			console.log(picocolors.dim(`[convexdoc:${requestId}] `) + message);
 		};
 
 		const logEnd = (status: number) => {
 			const duration = Date.now() - reqStart;
-			const methodColor = chalk.magentaBright;
-			const pathColor = chalk.blue;
-			const arrow = chalk.dim("->");
-			const durationText = chalk.dim(`(${duration}ms)`);
+			const methodColor = picocolors.magentaBright;
+			const pathColor = picocolors.blue;
+			const arrow = picocolors.dim("->");
+			const durationText = picocolors.dim(`(${duration}ms)`);
 
-			let statusColor: (s: string) => string = chalk.white;
-			if (status >= 500) statusColor = chalk.red;
-			else if (status >= 400) statusColor = chalk.yellow;
-			else if (status >= 300) statusColor = chalk.cyan;
-			else if (status >= 200) statusColor = chalk.green;
+			let statusColor: (s: string) => string = picocolors.white;
+			if (status >= 500) statusColor = picocolors.red;
+			else if (status >= 400) statusColor = picocolors.yellow;
+			else if (status >= 300) statusColor = picocolors.cyan;
+			else if (status >= 200) statusColor = picocolors.green;
 
 			console.log(
-				chalk.dim("[convexdoc]"),
+				picocolors.dim("[convexdoc]"),
 				methodColor(reqMethod),
 				pathColor(reqPath),
 				arrow,
@@ -162,7 +162,7 @@ export class DocsServer {
 
 		if (disableFunctionRunner) {
 			console.log(
-				chalk.yellow(
+				picocolors.yellow(
 					"[convexdoc] Function runner is disabled; request rejected.",
 				),
 			);
@@ -244,7 +244,7 @@ export class DocsServer {
 		}
 
 		const t0 = Date.now();
-		log(`${chalk.dim("proxy ->")} ${chalk.cyan(endpoint)}`);
+		log(`${picocolors.dim("proxy ->")} ${picocolors.cyan(endpoint)}`);
 		const upstream = await fetch(endpoint, {
 			method: "POST",
 			headers,

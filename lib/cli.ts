@@ -28,9 +28,9 @@ THE SOFTWARE.
 
 import { existsSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
-import chalk from "chalk";
 import { Command as CliBuilder } from "commander";
-import ora from "ora";
+import { Spinner } from 'picospinner'
+import picocolors from "picocolors";
 import { GenerateCommand } from "./cmd/generate.js";
 import { SpecCommand } from "./cmd/spec.js";
 import { CliConfig, type ConfigOptions } from "./config.js";
@@ -97,7 +97,8 @@ export class Cli {
 				const appConfig = this.createConfig({
 					projectDir: opts.projectDir,
 				});
-				const spinner = ora("Fetching function spec from Convex...").start();
+				const spinner = new Spinner("Fetching function spec from Convex...");
+				spinner.start();
 
 				let rawSpec: FunctionSpecOutput;
 				try {
@@ -109,7 +110,7 @@ export class Cli {
 					spinner.succeed("Function spec fetched successfully");
 				} catch (err: unknown) {
 					spinner.fail("Failed to fetch function spec");
-					console.error(chalk.red((err as Error).message));
+					console.error(picocolors.red((err as Error).message));
 					process.exit(1);
 				}
 
@@ -117,7 +118,7 @@ export class Cli {
 				if (opts.output) {
 					const outPath = resolve(opts.output);
 					writeFileSync(outPath, JSON.stringify(rawSpec, null, 2));
-					console.log(chalk.green(`\n✓ Raw spec written to ${outPath}`));
+					console.log(picocolors.green(`\n✓ Raw spec written to ${outPath}`));
 				}
 
 				if (opts.json) {
@@ -128,9 +129,9 @@ export class Cli {
 				// Pretty-print the parsed spec
 				const parsed = this.parser.run(rawSpec);
 				if (parsed.warnings?.length) {
-					console.log(chalk.yellow(`Warnings: ${parsed.warnings.length}`));
+					console.log(picocolors.yellow(`Warnings: ${parsed.warnings.length}`));
 					for (const warning of parsed.warnings.slice(0, 8)) {
-						console.log(chalk.yellow(`  - ${warning}`));
+						console.log(picocolors.yellow(`  - ${warning}`));
 					}
 				}
 				this.parser.print(parsed);
@@ -148,7 +149,8 @@ export class Cli {
 				const appConfig = this.createConfig({
 					projectDir: opts.projectDir,
 				});
-				const spinner = ora("Fetching function spec...").start();
+				const spinner = new Spinner("Fetching function spec...");
+				spinner.start();
 
 				let rawSpec: FunctionSpecOutput;
 				try {
@@ -160,26 +162,27 @@ export class Cli {
 					spinner.succeed("Function spec fetched");
 				} catch (err: unknown) {
 					spinner.fail("Failed to fetch function spec");
-					console.error(chalk.red((err as Error).message));
+					console.error(picocolors.red((err as Error).message));
 					process.exit(1);
 				}
 
 				const parsed = this.parser.run(rawSpec);
 				if (parsed.warnings?.length) {
 					console.log(
-						chalk.yellow(`Parser warnings: ${parsed.warnings.length}`),
+						picocolors.yellow(`Parser warnings: ${parsed.warnings.length}`),
 					);
 				}
 				if (parsed.summary.total === 0) {
 					console.log(
-						chalk.yellow(
+						picocolors.yellow(
 							"No functions found. Push your Convex functions first (e.g. npx convex dev), then run generate again.",
 						),
 					);
 					process.exit(0);
 				}
 
-				spinner.start("Generating docs...");
+				spinner.setText("Generating docs...");
+				spinner.start();
 				const outputDir = appConfig.docsDir;
 				try {
 					await generateCmd.run(parsed, outputDir, appConfig.projectDir, {
@@ -195,7 +198,7 @@ export class Cli {
 					);
 				} catch (err: unknown) {
 					spinner.fail("Generate failed");
-					console.error(chalk.red((err as Error).message));
+					console.error(picocolors.red((err as Error).message));
 					process.exit(1);
 				}
 			});
@@ -218,7 +221,7 @@ export class Cli {
 
 				if (!existsSync(docsDir)) {
 					console.error(
-						chalk.red(
+						picocolors.red(
 							`No docs folder at ${docsDir}. Run \`convexdoc generate\` first.`,
 						),
 					);
@@ -227,7 +230,7 @@ export class Cli {
 
 				if (!existsSync(join(docsDir, "index.html"))) {
 					console.error(
-						chalk.red(
+						picocolors.red(
 							`No index.html in ${docsDir}. Run \`convexdoc generate\` first.`,
 						),
 					);
@@ -235,8 +238,10 @@ export class Cli {
 				}
 
 				const url = `http://localhost:${appConfig.serverPort}`;
-				console.log(chalk.green(`Serving docs at ${chalk.bold(url)}`));
-				console.log(chalk.dim("Press Ctrl+C to stop.\n"));
+				console.log(
+					picocolors.green(`Serving docs at ${picocolors.bold(url)}`),
+				);
+				console.log(picocolors.dim("Press Ctrl+C to stop.\n"));
 
 				const server = new DocsServer({
 					docsDir,
@@ -266,7 +271,8 @@ export class Cli {
 					serverPort: opts.port,
 					verboseLogs: opts.verboseLogs === true ? true : undefined,
 				});
-				const spinner = ora("Fetching function spec...").start();
+				const spinner = new Spinner("Fetching function spec...");
+				spinner.start();
 
 				let rawSpec: FunctionSpecOutput;
 				try {
@@ -278,26 +284,27 @@ export class Cli {
 					spinner.succeed("Function spec fetched");
 				} catch (err: unknown) {
 					spinner.fail("Failed to fetch function spec");
-					console.error(chalk.red((err as Error).message));
+					console.error(picocolors.red((err as Error).message));
 					process.exit(1);
 				}
 
 				const parsed = this.parser.run(rawSpec);
 				if (parsed.warnings?.length) {
 					console.log(
-						chalk.yellow(`Parser warnings: ${parsed.warnings.length}`),
+						picocolors.yellow(`Parser warnings: ${parsed.warnings.length}`),
 					);
 				}
 				if (parsed.summary.total === 0) {
 					console.log(
-						chalk.yellow(
+						picocolors.yellow(
 							"No functions found. Push your Convex functions first (e.g. npx convex dev), then run start again.",
 						),
 					);
 					process.exit(0);
 				}
 
-				spinner.start("Generating docs...");
+				spinner.setText("Generating docs...");
+				spinner.start();
 				const docsDir = appConfig.docsDir;
 				try {
 					await generateCmd.run(parsed, docsDir, appConfig.projectDir, {
@@ -313,14 +320,16 @@ export class Cli {
 					);
 				} catch (err: unknown) {
 					spinner.fail("Generate failed");
-					console.error(chalk.red((err as Error).message));
+					console.error(picocolors.red((err as Error).message));
 					process.exit(1);
 				}
 
 				const port = String(appConfig.serverPort);
 				const url = `http://localhost:${port}`;
-				console.log(chalk.green(`Serving docs at ${chalk.bold(url)}`));
-				console.log(chalk.dim("Press Ctrl+C to stop.\n"));
+				console.log(
+					picocolors.green(`Serving docs at ${picocolors.bold(url)}`),
+				);
+				console.log(picocolors.dim("Press Ctrl+C to stop.\n"));
 
 				const server = new DocsServer({
 					docsDir,

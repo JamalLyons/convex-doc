@@ -26,7 +26,7 @@ THE SOFTWARE.
 
 ---------------------------------------------------------------------------*/
 
-import chalk from "chalk";
+import picocolors from "picocolors";
 import type {
 	ConvexFunctionSpec,
 	ConvexFunctionType,
@@ -119,44 +119,48 @@ export class Parser {
 
 		console.log();
 		console.log(
-			chalk.bold.cyan(
-				"━━━ ConvexDoc Function Spec ━━━━━━━━━━━━━━━━━━━━━━━━━━━━",
+			picocolors.bold(
+				picocolors.cyan(
+					"━━━ ConvexDoc Function Spec ━━━━━━━━━━━━━━━━━━━━━━━━━━━━",
+				),
 			),
 		);
 		console.log();
 
 		// Summary table
-		console.log(chalk.bold("Summary"));
+		console.log(picocolors.bold("Summary"));
 		console.log(
-			`  ${chalk.white("Total")}      ${chalk.yellow(summary.total)}`,
+			`  ${picocolors.white("Total")}      ${picocolors.yellow(summary.total)}`,
 		);
 		console.log(
-			`  ${chalk.blue("Queries")}    ${chalk.yellow(summary.queries)}   ` +
-				`${chalk.green("Mutations")}  ${chalk.yellow(summary.mutations)}   ` +
-				`${chalk.magenta("Actions")}    ${chalk.yellow(summary.actions)}`,
+			`  ${picocolors.blue("Queries")}    ${picocolors.yellow(summary.queries)}   ` +
+				`${picocolors.green("Mutations")}  ${picocolors.yellow(summary.mutations)}   ` +
+				`${picocolors.magenta("Actions")}    ${picocolors.yellow(summary.actions)}`,
 		);
 		if (summary.httpActions > 0) {
 			console.log(
-				`  ${chalk.cyan("HTTP Actions")} ${chalk.yellow(summary.httpActions)}`,
+				`  ${picocolors.cyan("HTTP Actions")} ${picocolors.yellow(summary.httpActions)}`,
 			);
 		}
 		console.log(
-			`  ${chalk.gray("Public")}     ${chalk.yellow(summary.public)}   ` +
-				`${chalk.gray("Internal")}   ${chalk.yellow(summary.internal)}`,
+			`  ${picocolors.gray("Public")}     ${picocolors.yellow(summary.public)}   ` +
+				`${picocolors.gray("Internal")}   ${picocolors.yellow(summary.internal)}`,
 		);
 
 		if (summary.total === 0) {
 			console.log();
 			console.log(
-				chalk.yellow(
+				picocolors.yellow(
 					"No functions found on this deployment. Push your Convex functions first:",
 				),
 			);
 			console.log(
-				chalk.dim("  npx convex dev   (dev) or  npx convex deploy  (prod)"),
+				picocolors.dim(
+					"  npx convex dev   (dev) or  npx convex deploy  (prod)",
+				),
 			);
 			console.log(
-				chalk.dim(
+				picocolors.dim(
 					"  Run from your project root (or use --project-dir). Then run convexdoc spec again.",
 				),
 			);
@@ -166,27 +170,31 @@ export class Parser {
 
 		// Per-module breakdown
 		for (const mod of modules) {
-			console.log(chalk.bold.white(`📦 ${mod.name}`));
+			console.log(picocolors.bold(picocolors.white(`📦 ${mod.name}`)));
 
 			for (const fn of mod.functions) {
 				const fnName = this.getFunctionName(fn.identifier);
 				const typeLabel = this.fnTypeLabel(fn.functionType);
 				const visLabel =
-					fn.visibility.kind === "internal" ? chalk.gray(" [internal]") : "";
+					fn.visibility.kind === "internal"
+						? picocolors.gray(" [internal]")
+						: "";
 
-				console.log(`   ${typeLabel} ${chalk.white(fnName)}${visLabel}`);
+				console.log(`   ${typeLabel} ${picocolors.white(fnName)}${visLabel}`);
 
 				if (fn.args) {
 					console.log(
-						`      ${chalk.dim("args:")}    ${chalk.gray(this.formatValidator(fn.args))}`,
+						`      ${picocolors.dim("args:")}    ${picocolors.gray(this.formatValidator(fn.args))}`,
 					);
 				} else {
-					console.log(`      ${chalk.dim("args:")}    ${chalk.gray("none")}`);
+					console.log(
+						`      ${picocolors.dim("args:")}    ${picocolors.gray("none")}`,
+					);
 				}
 
 				if (fn.returns) {
 					console.log(
-						`      ${chalk.dim("returns:")} ${chalk.gray(this.formatValidator(fn.returns))}`,
+						`      ${picocolors.dim("returns:")} ${picocolors.gray(this.formatValidator(fn.returns))}`,
 					);
 				}
 			}
@@ -196,7 +204,9 @@ export class Parser {
 
 		if (summary.total > 0) {
 			console.log(
-				chalk.dim("Run `convexdoc generate` to build your documentation site."),
+				picocolors.dim(
+					"Run `convexdoc generate` to build your documentation site.",
+				),
 			);
 		}
 		console.log();
@@ -265,15 +275,15 @@ export class Parser {
 	private fnTypeLabel(type: string): string {
 		switch (type) {
 			case "query":
-				return chalk.blue("Q");
+				return picocolors.blue("Q");
 			case "mutation":
-				return chalk.green("M");
+				return picocolors.green("M");
 			case "action":
-				return chalk.magenta("A");
+				return picocolors.magenta("A");
 			case "httpAction":
-				return chalk.cyan("H");
+				return picocolors.cyan("H");
 			default:
-				return chalk.gray("?");
+				return picocolors.gray("?");
 		}
 	}
 
