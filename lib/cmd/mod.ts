@@ -26,55 +26,10 @@ THE SOFTWARE.
 
 ---------------------------------------------------------------------------*/
 
-import { existsSync } from "node:fs";
-import { join } from "node:path";
-import type { FunctionSpecOutput } from "../types.js";
-
 /**
  * Base class for ConvexDoc CLI commands. Encapsulates shared helpers and
  * cross-command concerns so individual commands stay focused on their flow.
  */
 export abstract class Command {
-	/**
-	 * Validate that the given directory looks like a Convex project. All
-	 * commands that talk to Convex should call this before running.
-	 */
-	protected ensureConvexProject(dir: string): void {
-		const hasConvexDir = existsSync(join(dir, "convex"));
-		const hasEnvFile =
-			existsSync(join(dir, ".env.local")) || existsSync(join(dir, ".env"));
-
-		if (!hasConvexDir && !hasEnvFile) {
-			throw new Error(
-				`No Convex project found at: ${dir}\n` +
-					`Expected a \`convex/\` directory. ` +
-					`Use --project-dir to point at your Convex project root.`,
-			);
-		}
-	}
-
-	/**
-	 * Parse and normalize the JSON output from `convex function-spec`. This
-	 * assumes a plain JSON value (object or array) and normalizes the two
-	 * supported shapes returned by Convex:
-	 *   1. { functions: [...] }
-	 *   2. [...]  (bare array of functions)
-	 */
-	protected parseFunctionSpecOutput(stdout: string): FunctionSpecOutput {
-		try {
-			const direct = JSON.parse(stdout.trim());
-
-			if (Array.isArray(direct)) {
-				return { functions: direct };
-			}
-
-			return direct as FunctionSpecOutput;
-		} catch {
-			throw new Error(
-				`Failed to parse JSON from \`convex function-spec\`.\n\nRaw output:\n${stdout}`,
-			);
-		}
-	}
-
 	public abstract run(...args: unknown[]): Promise<unknown>;
 }
