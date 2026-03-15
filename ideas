@@ -1,3 +1,0 @@
-- Add a config for a siteName, allowing the site title to be customized to something the user likes.
-- Log funcitonRunner responces to the server logs so users can retain the test data
-- implement most of the audit report

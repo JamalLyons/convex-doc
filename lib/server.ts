@@ -197,6 +197,17 @@ export class DocsServer {
 
 		const { functionType, path, args = {} } = body;
 
+		// Log request immediately so users can retain test data (stderr for reliable flush)
+		console.warn("");
+		console.warn(
+			picocolors.dim("[convexdoc] function runner request:"),
+			picocolors.cyan(functionType),
+			picocolors.blue(path),
+			Object.keys(args).length > 0
+				? picocolors.gray(JSON.stringify(args, null, 2))
+				: "",
+		);
+
 		const convexUrl = deploymentUrl ?? process.env.CONVEX_URL;
 		if (!convexUrl) {
 			res.statusCode = 500;
@@ -225,6 +236,7 @@ export class DocsServer {
 
 		const t0 = Date.now();
 		log(`${picocolors.dim("proxy ->")} ${picocolors.cyan(endpoint)}`);
+
 		const upstream = await fetch(endpoint, {
 			method: "POST",
 			headers,
@@ -232,6 +244,30 @@ export class DocsServer {
 		});
 		const text = await upstream.text();
 		const dtMs = Date.now() - t0;
+
+		// Log response so users can retain test data (stderr, plain JSON with pretty-print)
+		let responsePreview: string;
+		try {
+			const parsed = JSON.parse(text) as unknown;
+			responsePreview =
+				typeof parsed === "object" && parsed !== null
+					? JSON.stringify(parsed, null, 2)
+					: text;
+		} catch {
+			responsePreview = text;
+		}
+		const statusColor =
+			upstream.status >= 500
+				? picocolors.red
+				: upstream.status >= 400
+					? picocolors.yellow
+					: picocolors.green;
+		console.warn(
+			picocolors.dim("[convexdoc] function runner response"),
+			statusColor(`(${upstream.status})`),
+			picocolors.dim(`${dtMs}ms`),
+		);
+		console.warn(responsePreview);
 
 		res.statusCode = upstream.status;
 		res.setHeader(

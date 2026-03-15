@@ -1,0 +1,5 @@
+---
+alwaysApply: true
+---
+
+When working with json use the typia library when you can to increase speed and safeity. If we need to use the normal json api then give a reason for this. When creatting normal typescript types, add typia tags where needed

@@ -737,7 +737,7 @@ export class GenerateCommand extends Command {
 			"esbuild@0.25.10",
 			entry,
 			"--bundle",
-			// "--minify",
+			"--minify",
 			"--platform=browser",
 			"--format=esm",
 			"--target=es2020",

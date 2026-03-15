@@ -37,7 +37,7 @@
 	],
 	"scripts": {
 		"build": "tsc",
-		"dev": "ts-node dist/main.js",
+		"dev": "node --loader ts-node/esm lib/main.ts",
 		"lint": "biome check .",
 		"lint:fix": "biome check --write .",
 		"convex:dev": "pnpm dlx convex dev --once",
@@ -63,6 +63,7 @@
 		"@types/react-dom": "^19.2.3",
 		"convex": "^1.33.1",
 		"ts-node": "^10.9.2",
+		"tsx": "^4.19.2",
 		"ts-patch": "^3.3.0",
 		"typescript": "~5.9.3"
 	}
