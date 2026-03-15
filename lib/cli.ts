@@ -127,6 +127,7 @@ export class Cli {
 					const outPath = resolve(opts.output);
 					writeFileSync(outPath, typia.json.stringify(rawSpec));
 					console.log(picocolors.green(`\n✓ Raw spec written to ${outPath}`));
+					return;
 				}
 
 				if (opts.json) {

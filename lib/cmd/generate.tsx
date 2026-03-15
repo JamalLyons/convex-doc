@@ -37,7 +37,6 @@ import {
 	unlinkSync,
 	writeFileSync,
 } from "node:fs";
-import { createRequire } from "node:module";
 import { tmpdir } from "node:os";
 import { dirname, join, relative, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -412,8 +411,6 @@ export class GenerateCommand extends Command {
 		outputDir: string,
 		customization: Customization,
 	): Promise<void> {
-		const require = createRequire(import.meta.url);
-
 		// Tailwind: use a temp dir for config and input so only styles.css is written to outputDir
 		const contentGlob = join(outputDir, "*.html")
 			.replace(/\\/g, "/")
@@ -444,26 +441,16 @@ export class GenerateCommand extends Command {
 		);
 
 		try {
-			// Use npx so Tailwind’s CLI entry point is resolved by the package; avoids
-			// depending on tailwindcss/lib/cli.js across major versions.
-			const tailwindPkg = require.resolve("tailwindcss/package.json");
-			const packageRoot = dirname(dirname(tailwindPkg));
-			await x(
-				"npx",
-				[
-					"tailwindcss@3.4.17",
-					"-i",
-					inputCssPath,
-					"-o",
-					outputCssPath,
-					"-c",
-					tailwindConfigPath,
-					"--minify",
-				],
-				{
-					nodeOptions: { cwd: packageRoot },
-				},
-			);
+			await x("npx", [
+				"tailwindcss@3.4.17",
+				"-i",
+				inputCssPath,
+				"-o",
+				outputCssPath,
+				"-c",
+				tailwindConfigPath,
+				"--minify",
+			]);
 		} finally {
 			try {
 				unlinkSync(tailwindConfigPath);
@@ -750,7 +737,7 @@ export class GenerateCommand extends Command {
 			"esbuild@0.25.10",
 			entry,
 			"--bundle",
-			"--minify",
+			// "--minify",
 			"--platform=browser",
 			"--format=esm",
 			"--target=es2020",

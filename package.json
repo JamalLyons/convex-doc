@@ -37,15 +37,14 @@
 	],
 	"scripts": {
 		"build": "tsc",
-		"dev": "pnpm build && node dist/main.js",
-		"test": "node --test test/**/*.test.ts",
+		"dev": "ts-node dist/main.js",
 		"lint": "biome check .",
 		"lint:fix": "biome check --write .",
 		"convex:dev": "pnpm dlx convex dev --once",
 		"clean": "rm -rf dist docs",
+		"prepare": "ts-patch install",
 		"prepublishOnly": "pnpm run clean && pnpm run build && pnpm test",
-		"release": "pnpm run clean && pnpm run build && pnpm test && pnpm publish --access public",
-		"prepare": "ts-patch install"
+		"release": "pnpm run clean && pnpm run build && pnpm test && pnpm publish --access public"
 	},
 	"dependencies": {
 		"commander": "^14.0.3",
@@ -63,6 +62,7 @@
 		"@types/react": "^19.2.14",
 		"@types/react-dom": "^19.2.3",
 		"convex": "^1.33.1",
+		"ts-node": "^10.9.2",
 		"ts-patch": "^3.3.0",
 		"typescript": "~5.9.3"
 	}
