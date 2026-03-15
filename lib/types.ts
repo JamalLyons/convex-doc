@@ -184,3 +184,6 @@ export const isFunctionSpecOutput = typia.createIs<FunctionSpecOutput>();
 /** Assertion function for raw function spec output */
 export const assertFunctionSpecOutput =
 	typia.createAssert<FunctionSpecOutput>();
+
+type JsonPrimitive = string | number | boolean | null;
+export type Json = JsonPrimitive | Json[] | { [key: string]: Json };
