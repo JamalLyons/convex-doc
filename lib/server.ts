@@ -39,6 +39,8 @@ export interface RunRequestBody {
 	bearerToken?: string;
 }
 
+const isRunRequestBody = typia.createIs<RunRequestBody>();
+
 export interface DocsServerOptions {
 	docsDir: string;
 	port: number;
@@ -179,10 +181,8 @@ export class DocsServer {
 			return;
 		}
 
-		const body = (await this.readJsonBody(
-			req,
-		)) as Partial<RunRequestBody> | null;
-		if (!body || typeof body !== "object") {
+		const body = await this.readJsonBody(req);
+		if (!body) {
 			res.statusCode = 400;
 			res.setHeader("content-type", "application/json; charset=utf-8");
 			res.end(
@@ -195,28 +195,7 @@ export class DocsServer {
 			return;
 		}
 
-		const functionType = body.functionType;
-		const path = body.path;
-		const args = body.args ?? {};
-
-		if (
-			(functionType !== "query" &&
-				functionType !== "mutation" &&
-				functionType !== "action") ||
-			typeof path !== "string" ||
-			!path
-		) {
-			res.statusCode = 400;
-			res.setHeader("content-type", "application/json; charset=utf-8");
-			res.end(
-				typia.json.stringify({
-					status: "error",
-					errorMessage: "Body must include { functionType, path }",
-				}),
-			);
-			logEnd(400);
-			return;
-		}
+		const { functionType, path, args = {} } = body;
 
 		const convexUrl = deploymentUrl ?? process.env.CONVEX_URL;
 		if (!convexUrl) {
@@ -377,13 +356,18 @@ export class DocsServer {
 
 	private async readJsonBody(
 		req: import("node:http").IncomingMessage,
-	): Promise<unknown> {
+	): Promise<RunRequestBody | null> {
 		const chunks: Uint8Array[] = [];
 		for await (const chunk of req) chunks.push(chunk as Uint8Array);
 		const raw = Buffer.concat(chunks).toString("utf-8");
 		if (!raw.trim()) return null;
 
-		const parsed = typia.json.isParse<Partial<RunRequestBody>>(raw);
-		return parsed;
+		let parsed: unknown;
+		try {
+			parsed = typia.json.isParse<RunRequestBody>(raw);
+		} catch {
+			return null;
+		}
+		return isRunRequestBody(parsed) ? parsed : null;
 	}
 }

@@ -28,6 +28,7 @@ THE SOFTWARE.
 
 import { useEffect, useMemo, useState } from "react";
 import { createRoot } from "react-dom/client";
+import { validateArgsAgainstSchema } from "../validate-args.js";
 
 type FunctionType = "query" | "mutation" | "action" | "httpAction";
 
@@ -388,6 +389,7 @@ function RunnerPanel({
 	const [statusLine, setStatusLine] = useState<string>("");
 	const [headersJson, setHeadersJson] = useState<string>("{}");
 	const [showErrorDetails, setShowErrorDetails] = useState(false);
+	const [showAuthToken, setShowAuthToken] = useState(false);
 
 	useEffect(() => {
 		const next = fn
@@ -484,6 +486,16 @@ function RunnerPanel({
 			}
 		}
 
+		// Pre-flight schema validation when manifest provides an args validator (Typia-validated in validate-args)
+		const validation = validateArgsAgainstSchema(fn.args, args);
+		if (!validation.valid) {
+			setResponseValue(validation.error ?? "Validation failed");
+			setResponseKind("error");
+			setStatusLine("Arguments don't match schema");
+			setRunning(false);
+			return;
+		}
+
 		localStorage.setItem(argsKey, prettyJson(args));
 		if (isHttpAction) {
 			localStorage.setItem(
@@ -559,12 +571,61 @@ function RunnerPanel({
 					<div className="block text-[11px] mb-1.5 text-[var(--phoenix-text-muted)]">
 						Auth Token (optional)
 					</div>
-					<input
-						className="convexdoc-input w-full rounded-xl px-3 py-2 text-xs font-mono"
-						placeholder="Token"
-						value={token}
-						onChange={(e) => setToken(e.currentTarget.value)}
-					/>
+					<div className="relative flex items-center">
+						<input
+							className="convexdoc-input w-full rounded-xl pl-3 pr-9 py-2 text-xs font-mono"
+							type={showAuthToken ? "text" : "password"}
+							placeholder="Token"
+							value={token}
+							onChange={(e) => setToken(e.currentTarget.value)}
+							autoComplete="off"
+						/>
+						<button
+							type="button"
+							onClick={() => setShowAuthToken((v) => !v)}
+							className="absolute right-2 p-1 rounded text-[var(--phoenix-text-muted)] hover:text-[var(--phoenix-text)] focus:outline-none focus:ring-2 focus:ring-[var(--phoenix-border)]"
+							title={showAuthToken ? "Hide token" : "Show token"}
+							aria-label={showAuthToken ? "Hide token" : "Show token"}
+						>
+							{showAuthToken ? (
+								<svg
+									xmlns="http://www.w3.org/2000/svg"
+									width="16"
+									height="16"
+									viewBox="0 0 24 24"
+									fill="none"
+									stroke="currentColor"
+									strokeWidth="2"
+									strokeLinecap="round"
+									strokeLinejoin="round"
+									aria-hidden="true"
+									role="img"
+								>
+									<title>Hide token</title>
+									<path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24" />
+									<line x1="1" y1="1" x2="23" y2="23" />
+								</svg>
+							) : (
+								<svg
+									xmlns="http://www.w3.org/2000/svg"
+									width="16"
+									height="16"
+									viewBox="0 0 24 24"
+									fill="none"
+									stroke="currentColor"
+									strokeWidth="2"
+									strokeLinecap="round"
+									strokeLinejoin="round"
+									aria-hidden="true"
+									role="img"
+								>
+									<title>Show token</title>
+									<path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+									<circle cx="12" cy="12" r="3" />
+								</svg>
+							)}
+						</button>
+					</div>
 				</div>
 				{isHttpAction ? (
 					<div>

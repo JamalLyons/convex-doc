@@ -185,5 +185,8 @@ export const isFunctionSpecOutput = typia.createIs<FunctionSpecOutput>();
 export const assertFunctionSpecOutput =
 	typia.createAssert<FunctionSpecOutput>();
 
+/** Runtime check that a value is a valid ConvexValidator (e.g. from manifest JSON). */
+export const isConvexValidator = typia.createIs<ConvexValidator>();
+
 type JsonPrimitive = string | number | boolean | null;
 export type Json = JsonPrimitive | Json[] | { [key: string]: Json };
