@@ -8,6 +8,8 @@
  * @module
  */
 
+import type * as fun_nested_test from "../fun/nested/test.js";
+import type * as fun_test from "../fun/test.js";
 import type * as http from "../http.js";
 import type * as lists from "../lists.js";
 import type * as tasks from "../tasks.js";
@@ -19,6 +21,8 @@ import type {
 } from "convex/server";
 
 declare const fullApi: ApiFromModules<{
+  "fun/nested/test": typeof fun_nested_test;
+  "fun/test": typeof fun_test;
   http: typeof http;
   lists: typeof lists;
   tasks: typeof tasks;

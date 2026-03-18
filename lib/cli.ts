@@ -26,12 +26,13 @@ THE SOFTWARE.
 
 ---------------------------------------------------------------------------*/
 
-import { existsSync, writeFileSync } from "node:fs";
+import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { Command as CliBuilder } from "commander";
 import picocolors from "picocolors";
 import { Spinner } from "picospinner";
 import typia from "typia";
+import { ExportCommand } from "./cmd/export.js";
 import { GenerateCommand } from "./cmd/generate.js";
 import { InitCommand } from "./cmd/init.js";
 import { SpecCommand } from "./cmd/spec.js";
@@ -48,6 +49,11 @@ interface SpecCliOptions {
 
 interface GenerateCliOptions {
 	projectDir?: string;
+}
+
+interface ExportCliOptions {
+	projectDir?: string;
+	output?: string;
 }
 
 interface InitCliOptions {
@@ -79,6 +85,7 @@ export class Cli {
 			.version("0.1.7");
 
 		this.specCommandBuilder();
+		this.exportCommandBuilder();
 		this.initCommandBuilder();
 		this.generateCommandBuilder();
 		this.serveCommandBuilder();
@@ -144,6 +151,56 @@ export class Cli {
 					}
 				}
 				this.parser.print(parsed);
+			});
+	}
+
+	private exportCommandBuilder(): CliBuilder {
+		const exportCmd = new ExportCommand();
+		return this.cli
+			.command("export")
+			.description(
+				"Generate an OpenAPI spec (YAML) from your Convex deployment",
+			)
+			.option("-p, --project-dir <path>", "Path to your Convex project root")
+			.option(
+				"-o, --output <file>",
+				"Copy generated OpenAPI YAML to a specific file",
+			)
+			.action(async (opts: ExportCliOptions) => {
+				const appConfig = this.createConfig({
+					projectDir: opts.projectDir,
+				});
+
+				const spinner = new Spinner("Generating OpenAPI spec...");
+				spinner.start();
+
+				let generatedFilePath: string;
+				try {
+					generatedFilePath = await exportCmd.run({
+						projectDir: appConfig.projectDir,
+						deploymentUrl: appConfig.deploymentUrl,
+						deploymentEnv: appConfig.deploymentEnv,
+					});
+					spinner.succeed("OpenAPI spec generated");
+				} catch (err: unknown) {
+					spinner.fail("Failed to generate OpenAPI spec");
+					console.error(picocolors.red((err as Error).message));
+					process.exit(1);
+				}
+
+				if (opts.output) {
+					const outPath = resolve(opts.output);
+					const yaml = readFileSync(generatedFilePath, "utf-8");
+					writeFileSync(outPath, yaml, "utf-8");
+					console.log(
+						picocolors.green(`\n✓ OpenAPI YAML written to ${outPath}`),
+					);
+					return;
+				}
+
+				console.log(
+					picocolors.green(`\n✓ OpenAPI YAML written to ${generatedFilePath}`),
+				);
 			});
 	}
 
