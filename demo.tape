@@ -1,9 +1,10 @@
 Output demo.gif
 
-Set FontSize 40
-Set FontFamily "Monoflow"
+Set FontSize 25
+Set FontFamily "Menlo"
 Set Width 1200
 Set Height 600
+Set LetterSpacing 5
 Set TypingSpeed 60ms
 Set Theme "Dracula"
 Set WindowBar Colorful
@@ -31,4 +32,4 @@ Sleep 1s
 Type "pnpm dlx convexdoc serve"
 Sleep 300ms
 Enter
-Sleep 2s
+Sleep 5s

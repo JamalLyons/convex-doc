@@ -8,7 +8,7 @@ It connects to a [Convex](https://www.convex.dev/) project, fetches the function
 - A **searchable overview** of your API surface
 - An **interactive function runner** when served locally
 
-<!-- ![ConvexDoc Demo](./demo.gif) -->
+![ConvexDoc Demo](./demo.gif)
 
 ---
 
