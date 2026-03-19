@@ -45,7 +45,7 @@
 		"prepare": "ts-patch install",
 		"test": "node --loader ts-node/esm --test test/**/*.test.ts",
 		"prepublishOnly": "pnpm run clean && pnpm run build && pnpm test",
-		"release": "pnpm run clean && pnpm run build && pnpm test && pnpm publish --access public"
+		"release": "pnpm run clean && pnpm run build && pnpm test && pnpm lint:fix && pnpm publish --access public"
 	},
 	"dependencies": {
 		"commander": "^14.0.3",

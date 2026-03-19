@@ -1,17 +1,17 @@
 {
-  "projectDir": ".",
-  "serverPort": 3000,
-  "docsDir": "docs",
-  "authToken": "",
-  "verboseLogs": false,
-  "disableFunctionRunner": false,
-  "deploymentEnv": "dev",
-  "customization": {
-    "theme": {
-      "accent": ""
-    },
-    "contentPath": "",
-    "hideConvexDocsLinks": true,
-    "excludeFunctionTypes": []
-  }
+	"projectDir": ".",
+	"serverPort": 3000,
+	"docsDir": "docs",
+	"authToken": "",
+	"verboseLogs": false,
+	"disableFunctionRunner": false,
+	"deploymentEnv": "dev",
+	"customization": {
+		"theme": {
+			"accent": ""
+		},
+		"contentPath": "",
+		"hideConvexDocsLinks": true,
+		"excludeFunctionTypes": []
+	}
 }

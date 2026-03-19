@@ -10,7 +10,8 @@
 			"**",
 			"!!**/dist",
 			"!!**/convex/_generated",
-			"!!**/node_modules"
+			"!!**/node_modules",
+			"!!**/test"
 		]
 	},
 	"formatter": {
