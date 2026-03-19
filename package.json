@@ -43,6 +43,7 @@
 		"convex:dev": "pnpm dlx convex dev --once",
 		"clean": "rm -rf dist docs",
 		"prepare": "ts-patch install",
+		"test": "node --loader ts-node/esm --test test/**/*.test.ts",
 		"prepublishOnly": "pnpm run clean && pnpm run build && pnpm test",
 		"release": "pnpm run clean && pnpm run build && pnpm test && pnpm publish --access public"
 	},
