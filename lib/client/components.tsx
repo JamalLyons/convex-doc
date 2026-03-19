@@ -52,13 +52,7 @@ export interface PageProps {
 		theme?: {
 			accent?: string;
 		};
-		modules?: Record<
-			string,
-			{
-				description?: string;
-				functions?: Record<string, { description?: string }>;
-			}
-		>;
+		contentPath?: string;
 		hideConvexDocsLinks?: boolean;
 	};
 }
@@ -71,6 +65,8 @@ export interface IndexPageProps extends PageProps {
 
 export interface ModulePageProps extends PageProps {
 	module: ConvexModule;
+	/** Pre-rendered HTML from module markdown file. */
+	moduleContentHtml?: string | null;
 }
 
 function functionTypeBadge(type: ConvexFunctionType): string {
@@ -133,7 +129,7 @@ function docsLinkForFunctionType(
 }
 
 function moduleDisplayName(name: string): string {
-	if (name === "http") return "built-in: http";
+	if (name === "http") return "http";
 	if (name === "(root)") return "root";
 	if (name === "unresolved") return "unresolved";
 	return name;
@@ -670,7 +666,6 @@ export function IndexPage({
 	baseHref = "",
 	nav,
 	buildInfo,
-	customization,
 	landingPageHtml,
 }: IndexPageProps) {
 	const { summary, modules } = spec;
@@ -776,8 +771,6 @@ export function IndexPage({
 					{modules.map((mod) => {
 						const slug = nav.moduleSlugs.get(mod.name) ?? mod.name;
 						const href = slug === "index" ? "index.html" : `${slug}.html`;
-						const moduleDescription =
-							customization?.modules?.[mod.name]?.description;
 						return (
 							<li key={mod.name}>
 								<a
@@ -792,11 +785,6 @@ export function IndexPage({
 											{mod.functions.length} fn
 										</span>
 									</div>
-									{moduleDescription ? (
-										<span className="mt-2 block text-xs text-slate-400">
-											{moduleDescription}
-										</span>
-									) : null}
 								</a>
 							</li>
 						);
@@ -814,6 +802,7 @@ export function ModulePage({
 	nav,
 	buildInfo,
 	customization,
+	moduleContentHtml,
 }: ModulePageProps) {
 	const indexHref = baseHref ? `${baseHref}index.html` : "index.html";
 	return (
@@ -838,25 +827,19 @@ export function ModulePage({
 				</h1>
 			</div>
 
-			{(() => {
-				const moduleDescription =
-					customization?.modules?.[module.name]?.description;
-				return moduleDescription ? (
-					<p className="mb-6 text-xs text-slate-400">{moduleDescription}</p>
-				) : null;
-			})()}
+			{moduleContentHtml ? (
+				<section
+					className="mb-8 convexdoc-prose max-w-3xl"
+					// biome-ignore lint/security/noDangerouslySetInnerHtml: build-time content from project markdown files
+					dangerouslySetInnerHTML={{ __html: moduleContentHtml }}
+				/>
+			) : null}
 
 			<div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_380px] gap-6">
 				<div className="min-w-0">
 					<ul className="space-y-5">
 						{module.functions.map((fn) => {
 							const docsLink = docsLinkForFunctionType(fn.functionType);
-							const functionName = fn.identifier.includes(":")
-								? fn.identifier.slice(fn.identifier.indexOf(":") + 1)
-								: fn.identifier;
-							const functionDescription =
-								customization?.modules?.[module.name]?.functions?.[functionName]
-									?.description;
 							return (
 								<li
 									key={fn.identifier}
@@ -890,11 +873,6 @@ export function ModulePage({
 											Run
 										</button>
 									</div>
-									{functionDescription ? (
-										<p className="mt-2 mb-3 text-xs text-slate-400">
-											{functionDescription}
-										</p>
-									) : null}
 
 									<div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-4">
 										<div

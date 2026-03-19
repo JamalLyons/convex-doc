@@ -1,10 +1,8 @@
-![Convex logo](https://static.convex.dev/logo/convex-logo-light.svg)
-
-## ConvexDoc
+# ConvexDoc
 
 **ConvexDoc** is a documentation generator and interactive tester for your [Convex](https://convex.dev) deployments.
 
-It connects to a Convex project, fetches the function spec, and produces a polished docs site with:
+It connects to a [Convex](https://www.convex.dev/) project, fetches the function spec, and produces a polished docs site with:
 
 - **Static HTML pages** for each module and function
 - A **searchable overview** of your API surface
@@ -12,7 +10,7 @@ It connects to a Convex project, fetches the function spec, and produces a polis
 
 ---
 
-### Installation
+## Installation
 
 Install ConvexDoc as a dev dependency in your Convex project:
 
@@ -27,22 +25,19 @@ npm install --save-dev convexdoc
 yarn add --dev convexdoc
 ```
 
-Requires **Node.js 18+**.
+Requires **Node.js 20+**.
 
 ---
 
-### Quick start
+## Quick start
 
 From your Convex project root:
 
 ```bash
-# 1) Generate docs into ./docs
-pnpm convexdoc generate
+#1) Inizualize the project
+pnpm convexdoc init
 
-# 2) Serve the docs locally at http://localhost:3000
-pnpm convexdoc serve
-
-# Or do both in one command:
+#2 Generate your documentation & start the local html server
 pnpm convexdoc start
 ```
 
@@ -50,95 +45,23 @@ By default, ConvexDoc:
 
 - Connects to your **dev** deployment
 - Writes the static docs site to `./docs`
-- Serves it on `http://localhost:3000` when using `serve`/`start`
+- Serves it on `http://localhost:3000` when using the`serve`/`start command`
 
 ---
 
-### CLI overview
+## CLI overview
 
 After installing, the `convexdoc` CLI is available (via `npx`, `pnpm convexdoc`, etc.).
 
-- **`convexdoc spec`** – Fetch and print the function spec
-- **`convexdoc generate`** – Generate a static docs site
-- **`convexdoc serve`** – Serve an existing docs site locally
-- **`convexdoc start`** – Generate docs and then serve them
-
-#### `convexdoc spec`
+Run the help command to learn about command options.
 
 ```bash
-pnpm convexdoc spec [options]
+pnpm convexdoc help [cmd]
 ```
-
-**Options:**
-
-- `-p, --project-dir <path>` – Path to your Convex project root
-- `-o, --output <file>` – Write the raw spec JSON to a file
-- `--json` – Print the raw JSON spec instead of a formatted summary
-
-Use this to quickly inspect which functions ConvexDoc sees on your deployment.
-
-#### `convexdoc generate`
-
-```bash
-pnpm convexdoc generate [options]
-```
-
-**Options:**
-
-- `-p, --project-dir <path>` – Path to your Convex project root
-
-This:
-
-- Fetches the Convex function spec
-- Enriches it with JSDoc and HTTP route information where available
-- Writes a static docs site to your configured `docsDir` (default: `docs/`)
-
-The output folder includes:
-
-- `index.html` – API overview page
-- `<module>.html` – One page per module
-- `app.js` – Bundled client runtime
-- `styles.css` – Generated Tailwind-based theme
-- `convexdoc.manifest.json` – Machine-readable metadata for the docs
-
-#### `convexdoc serve`
-
-```bash
-pnpm convexdoc serve [options]
-```
-
-**Options:**
-
-- `-p, --project-dir <path>` – Path to your Convex project root
-- `-P, --port <number>` – Port to listen on (default: `3000`)
-- `--verbose-logs` – Enable detailed request logs and verbose error details in the UI
-
-Serves the previously generated docs folder. Requires that:
-
-- Your `docs` directory (or `docsDir` from config) exists
-- `index.html` is present inside that directory
-
-#### `convexdoc start`
-
-```bash
-pnpm convexdoc start [options]
-```
-
-**Options:**
-
-- `-p, --project-dir <path>` – Path to your Convex project root
-- `-P, --port <number>` – Port to listen on (default: `3000`)
-- `--verbose-logs` – Enable detailed request logs and verbose error details in the UI
-
-This is a convenience command that:
-
-1. Fetches the function spec
-2. Generates the docs to `docsDir`
-3. Starts the local docs server
 
 ---
 
-### Configuration
+## Configuration
 
 ConvexDoc reads configuration from:
 
@@ -146,7 +69,7 @@ ConvexDoc reads configuration from:
 - Environment variables, and/or
 - CLI flags (e.g. `--project-dir`, `--port`)
 
-#### `convexdoc.config.json`
+### `convexdoc.config.json`
 
 Place a `convexdoc.config.json` file in the directory where you run `convexdoc`:
 
@@ -158,18 +81,21 @@ Place a `convexdoc.config.json` file in the directory where you run `convexdoc`:
   // Where to write the generated docs
   "docsDir": "docs",
 
-  // Base URL for Convex HTTP actions when running locally
-  // This is required if using HTTP actions in your Convex functions.
+  // Base URL for Convex HTTP actions when running locally,
+  // required if using HTTP actions in your Convex functions.
+  // By default convexdoc will read from our env.local file generated from convex.
+  // if you place a value here, it will override the env file data.
   "httpActionDeployUrl": "https://<your-deployment>.convex.site",
 
-  // Optional: override deployment URL when fetching the function spec
+  // By default convexdoc will read from our env.local file generated from convex.
+  // if you place a value here, it will override the env file data.
   "deploymentUrl": "https://<your-deployment>.convex.cloud",
 
   // Optional: Convex auth token (e.g. a JWT) if required by your deployment.
   // This will be sent as `Authorization: Bearer <authToken>` when running functions.
   "authToken": "your-auth-token",
 
-  // Optional: port for `convexdoc serve` / `convexdoc start`
+  // Optional: port for `convexdoc serve`
   "serverPort": 3000,
 
   // Optional: when true, enable verbose logging in the server and
@@ -178,39 +104,26 @@ Place a `convexdoc.config.json` file in the directory where you run `convexdoc`:
   // summary plus Request ID.
   "verboseLogs": false,
 
-  // When true, disable the function runner (for public deployments)
+  // When true, disable the function runner UI
   "disableFunctionRunner": false,
 
-  // Target environment for fetching the function spec ("dev" or "prod")
+  // Target environment for fetching the function spec ("dev" or "prod").
+  // The default environemnt is dev.
   "deploymentEnv": "dev",
 
-  // UI customization and per-module docs
+  // UI customization
   "customization": {
     "theme": {
       // Accent color for the UI (hex string)
       "accent": "#ef4444"
     },
-    "modules": {
-      // Keyed by module name
-      "tasks": {
-        "description": "Core task CRUD operations.",
-        "functions": {
-          "getTask": {
-            "description": "Fetch a single task by ID."
-          },
-          "createTask": {
-            "description": "Create a new task."
-          }
-        }
-      }
-    },
+
+    // Optional path to a directory of markdown files
+    // e.g. "./content"
+    "contentPath": "./content",
 
     // When true (default), hide "Learn more about Convex..." links
     "hideConvexDocsLinks": true,
-
-    // Optional path to a markdown or text file for the landing page
-    // e.g. "./landing.md" or "./README.md"
-    "landingPage": "./landing.md",
 
     // Optional list of Convex function types to exclude from docs
     // e.g. ["internalQuery", "internalMutation", "internalAction"] to show a public API only
@@ -221,7 +134,34 @@ Place a `convexdoc.config.json` file in the directory where you run `convexdoc`:
 
 Only the fields you need are required; everything else falls back to sensible defaults.
 
-#### Environment variables
+### File-based markdown customization
+
+When `customization.contentPath` is set, ConvexDoc will load markdown files from that
+folder and render them into the generated HTML:
+
+- `index.md` -> rendered on `index.html` (landing page)
+- `<moduleName>.md` -> rendered on `<module>.html` before the function list
+
+Module names include nested Convex namespaces, so nested modules map naturally:
+
+- module `movies` -> `content/movies.md`
+- module `ratings/by_movie` -> `content/ratings/by_movie.md`
+
+Example layout:
+
+```text
+content/
+  index.md
+  movies.md
+  ratings/
+    by_movie.md
+    by_user.md
+```
+
+Missing or unreadable markdown files do not fail generation; ConvexDoc logs a warning
+and continues using the default page content.
+
+### Environment variables
 
 The following environment variables can override or supplement config:
 
@@ -241,7 +181,7 @@ Boolean strings like `"true"`, `"1"`, `"yes"` are treated as `true`, and
 
 ---
 
-### Using ConvexDoc safely in public deployments
+## Using ConvexDoc safely in public deployments
 
 By default, the **function runner is enabled**, which allows you to invoke Convex
 functions interactively from the docs UI. For a **publicly hosted** docs site,
@@ -254,3 +194,4 @@ When disabled:
 
 - The `/__convexdoc/run` route rejects requests
 - The manifest marks `functionRunnerDisabled: true`
+

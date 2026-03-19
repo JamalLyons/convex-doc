@@ -31,25 +31,14 @@ import { isAbsolute, join, resolve } from "node:path";
 import { parseEnv } from "node:util";
 import typia, { type tags } from "typia";
 
-export interface ConvexDocFunctionCustomization {
-	description?: string;
-}
-
-export interface ConvexDocModuleCustomization {
-	description?: string;
-	/** Per-function docs keyed by function name (e.g. getTask, createTask). */
-	functions?: Record<string, ConvexDocFunctionCustomization>;
-}
-
 export interface Customization {
 	theme?: {
 		accent?: string;
 	};
-	modules?: Record<string, ConvexDocModuleCustomization>;
+	/** Path to a local directory containing markdown docs (e.g. "./content"). Resolved from project dir. */
+	contentPath?: string;
 	/** When true, hide "Learn more about Convex queries/mutations/..." links on function cards. */
 	hideConvexDocsLinks?: boolean;
-	/** Path to a local markdown or plaintext file for the landing page (e.g. "./readme.md"). Resolved from project dir. */
-	landingPage?: string;
 	/** Exclude these Convex function types from the generated docs (e.g. ["internalQuery", "internalMutation"] for public API only). */
 	excludeFunctionTypes?: string[];
 }
@@ -91,9 +80,8 @@ export const DEFAULT_CONFIG_FILE: ConfigFile = {
 	deploymentEnv: "dev",
 	customization: {
 		theme: { accent: "" },
-		modules: {},
+		contentPath: "",
 		hideConvexDocsLinks: true,
-		landingPage: "",
 		excludeFunctionTypes: [],
 	},
 };
@@ -329,56 +317,14 @@ export class CliConfig {
 			out.theme = { accent: customization.theme.accent.trim() };
 		}
 
-		if (customization.modules && typeof customization.modules === "object") {
-			const modules: Record<string, ConvexDocModuleCustomization> = {};
-			for (const [moduleName, moduleConfig] of Object.entries(
-				customization.modules,
-			)) {
-				if (
-					!moduleName.trim() ||
-					!moduleConfig ||
-					typeof moduleConfig !== "object"
-				) {
-					continue;
-				}
-				const description =
-					typeof moduleConfig.description === "string"
-						? moduleConfig.description.trim()
-						: "";
-				const modOut: ConvexDocModuleCustomization = description
-					? { description }
-					: {};
-				if (
-					moduleConfig.functions &&
-					typeof moduleConfig.functions === "object"
-				) {
-					const fns: Record<string, ConvexDocFunctionCustomization> = {};
-					for (const [fnName, fnConfig] of Object.entries(
-						moduleConfig.functions,
-					)) {
-						if (!fnName.trim() || !fnConfig || typeof fnConfig !== "object")
-							continue;
-						const fnDesc =
-							typeof fnConfig.description === "string"
-								? fnConfig.description.trim()
-								: "";
-						if (fnDesc) fns[fnName] = { description: fnDesc };
-					}
-					if (Object.keys(fns).length > 0) modOut.functions = fns;
-				}
-				modules[moduleName] = modOut;
-			}
-			out.modules = modules;
-		}
-
 		// Default true: hide "Learn more about Convex" links unless explicitly set to false
 		out.hideConvexDocsLinks = customization.hideConvexDocsLinks !== false;
 
 		if (
-			typeof customization.landingPage === "string" &&
-			customization.landingPage.trim()
+			typeof customization.contentPath === "string" &&
+			customization.contentPath.trim()
 		) {
-			out.landingPage = customization.landingPage.trim();
+			out.contentPath = customization.contentPath.trim();
 		}
 
 		if (Array.isArray(customization.excludeFunctionTypes)) {

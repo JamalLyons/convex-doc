@@ -266,24 +266,9 @@ export class GenerateCommand extends Command {
 	private normalizeCustomizationForManifest(
 		customization: Customization,
 	): Customization {
-		const modules = customization.modules ?? {};
-		const modulesNormalized: Record<
-			string,
-			{
-				description?: string;
-				functions?: Record<string, { description?: string }>;
-			}
-		> = {};
-		for (const [name, mod] of Object.entries(modules)) {
-			modulesNormalized[name] = {
-				...(mod ?? {}),
-				functions: mod?.functions ?? {},
-			};
-		}
 		return {
 			...customization,
 			excludeFunctionTypes: customization.excludeFunctionTypes ?? [],
-			modules: modulesNormalized,
 		};
 	}
 
@@ -362,11 +347,16 @@ export class GenerateCommand extends Command {
 		},
 	): void {
 		const baseHref = ""; // same dir as index
-
-		// Index page: optional custom landing content from file
-		const landingPageHtml = this.loadLandingPageContent(
+		const contentDir = this.resolveContentDir(
 			projectDir,
-			customization.landingPage,
+			customization.contentPath,
+		);
+
+		// Index page: optional custom landing content from content path
+		const landingPageHtml = this.loadCustomMarkdownContent(
+			contentDir,
+			"index",
+			"index page",
 		);
 		const indexHtml =
 			"<!DOCTYPE html>\n" +
@@ -387,6 +377,11 @@ export class GenerateCommand extends Command {
 		for (const mod of filteredSpec.modules) {
 			const slug = moduleSlugs.get(mod.name) ?? this.moduleToSlug(mod.name);
 			const filename = `${slug}.html`;
+			const moduleContentHtml = this.loadCustomMarkdownContent(
+				contentDir,
+				mod.name,
+				`module "${mod.name}"`,
+			);
 			const pageHtml =
 				"<!DOCTYPE html>\n" +
 				renderToStaticMarkup(
@@ -401,6 +396,7 @@ export class GenerateCommand extends Command {
 						}}
 						buildInfo={buildInfo}
 						customization={customization}
+						moduleContentHtml={moduleContentHtml}
 					/>,
 				);
 			writeFileSync(join(outputDir, filename), pageHtml, "utf-8");
@@ -649,7 +645,7 @@ export class GenerateCommand extends Command {
 	}
 
 	private moduleDisplayName(name: string): string {
-		if (name === "http") return "built-in: http";
+		if (name === "http") return "http";
 		if (name === "(root)") return "root";
 		if (name === "unresolved") return "unresolved";
 		return name;
@@ -695,34 +691,67 @@ export class GenerateCommand extends Command {
 		return Math.max(0, Math.min(255, Math.round(n)));
 	}
 
-	/**
-	 * Load and parse landing page content from a file path (relative to projectDir).
-	 * Returns HTML string for .md (via marked) or plaintext (escaped, wrapped in a div). Returns null if file missing or path empty.
-	 */
-	private loadLandingPageContent(
+	private resolveContentDir(
 		projectDir: string,
-		filePath: string | undefined,
+		contentPath: string | undefined,
+	): string | undefined {
+		if (!contentPath?.trim()) return undefined;
+		const resolved = resolve(projectDir, contentPath.trim());
+		if (!existsSync(resolved)) {
+			this.logContentWarning(
+				"customization content",
+				resolved,
+				"directory does not exist",
+			);
+			return undefined;
+		}
+		return resolved;
+	}
+
+	/**
+	 * Load and parse custom markdown from contentPath by key.
+	 * Returns HTML string via marked, or null when content cannot be loaded.
+	 */
+	private loadCustomMarkdownContent(
+		contentDir: string | undefined,
+		docKey: string,
+		label: string,
 	): string | null {
-		if (!filePath?.trim()) return null;
-		const resolved = resolve(projectDir, filePath.trim());
-		if (!existsSync(resolved)) return null;
+		if (!contentDir) return null;
+		const mdPath = resolve(contentDir, `${docKey}.md`);
+		const markdownPath = resolve(contentDir, `${docKey}.markdown`);
+		const resolved = existsSync(mdPath)
+			? mdPath
+			: existsSync(markdownPath)
+				? markdownPath
+				: null;
+		if (!resolved) {
+			this.logContentWarning(label, mdPath, "markdown file not found");
+			return null;
+		}
 		let raw: string;
 		try {
 			raw = readFileSync(resolved, "utf-8");
-		} catch {
+		} catch (error: unknown) {
+			this.logContentWarning(label, resolved, String(error ?? "read failed"));
 			return null;
 		}
-		const ext = resolved.toLowerCase().slice(resolved.lastIndexOf("."));
-		if (ext === ".md" || ext === ".markdown") {
+		try {
 			return marked.parse(raw) as string;
+		} catch (error: unknown) {
+			this.logContentWarning(label, resolved, String(error ?? "parse failed"));
+			return null;
 		}
-		// Plaintext: escape HTML and wrap in a single pre/div for display
-		const escaped = raw
-			.replace(/&/g, "&amp;")
-			.replace(/</g, "&lt;")
-			.replace(/>/g, "&gt;")
-			.replace(/"/g, "&quot;");
-		return `<div class="convexdoc-prose"><pre class="whitespace-pre-wrap text-sm" style="color: var(--phoenix-text-muted);">${escaped}</pre></div>`;
+	}
+
+	private logContentWarning(
+		context: string,
+		location: string,
+		reason: string,
+	): void {
+		console.warn(
+			`[convexdoc] ${context} failed to generate at ${location} (${reason})`,
+		);
 	}
 
 	private async bundleClientApp(outputDir: string): Promise<void> {
