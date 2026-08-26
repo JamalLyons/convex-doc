@@ -4,3 +4,4 @@
 /logs
 /docs
 .env.local
+.DS_Store
